@@ -1,7 +1,6 @@
 require "stat-monitor/version"
+require "stat-monitor/stats"
 
-module Stat
-  module Monitor
-    # Your code goes here...
-  end
+module StatMonitor
+	
 end
