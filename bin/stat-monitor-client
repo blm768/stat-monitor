@@ -1,4 +1,4 @@
 require 'stat-monitor'
 
-puts Stats::get()
+puts Stats::LocalStats.get()
 
