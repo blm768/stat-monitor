@@ -1,4 +1,7 @@
+require 'json'
+require 'pp'
+
 require 'stat-monitor'
 
-puts Stats::LocalStats.get()
+puts JSON.generate(Stats::LocalStats.get)
 
