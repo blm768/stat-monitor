@@ -1,6 +1,56 @@
 module Stats
   class LocalStats
-    def self.get()
+
+    def self.memStats()
+    memTotal = nil
+    memFree = nil
+    swapTotal = nil
+    swapFree = nil
+    memCached = nil
+    swapCached = nil
+    
+    File.open("/proc/meminfo") do |file|
+      def getValue(line)
+        Integer(/\d+/.match(line)[0])
+      end
+      file.each_line do |line|
+        case line
+          when /^MemTotal:\s/
+            memTotal = getValue(line)
+          when /^MemFree:\s/
+            memFree = getValue(line)
+          when /^SwapTotal:\s/
+            swapTotal = getValue(line)
+          when /^SwapFree:\s/
+            swapFree = /\d+/.match(line)[0]
+          when /^Cached\s/
+            memCached = /\d+/.match(line[0])
+          when /^SwapCached\s/
+            swapCached = /\d+/.match(line[0])
+        end
+      end
+    end
+
+    if memFree
+      if memTotal
+        memFree /= memTotal
+      else
+        memFree = nil
+      end
+    end
+
+    if swapFree
+      if swapTotal
+        swapFree /= swapTotal
+      else
+        swapFree = nil
+      end
+    end
+
+    {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached, 'SwapCached' => swapCached}
+  end
+
+  def self.get()
       data = {}
 
       #Load processor data
@@ -28,34 +78,17 @@ module Stats
         userName = fields[0]
         users[userName] = {} unless users.include?(userName)
       end
-
-      #Get load data
-      topData = `top -b -n 1`
       
-      memory = {}
-      loads = nil
-      cpuLoad = nil
-
-      topData.each_line do |line|
-        case line
-          when /^top\s/
-            #To do: error checking?
-            loads = line.split("load average:")[1].split(", ").map{|str| Float(str.chomp)}
-          when /^Cpu\(s\)\s/
-            cpuLoadStats = line.split(":")[1].split(",")[0 .. 1].map{|str| Float(/\d+\.\d+/.match(str)[0])}
-            cpuLoad = cpuLoadStats[0] + cpuLoadStats[1]
-          when /^Mem:\s/
-            physMemStats = line.split(":")[1]
-        end
-      end
       #Return data
       data['processorCount'] = numProcessors
-      data['cpuLoad'] = cpuLoad
+     # data['cpuLoad'] = cpuLoad
       data['users'] = users
-      data['loadStatus'] = loads
+      #data['loadStatus'] = loads
+      data['memory'] = memStats()
 
       data
     end
   end
-end
+
+  end
 
