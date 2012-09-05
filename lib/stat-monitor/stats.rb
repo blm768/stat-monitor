@@ -91,11 +91,12 @@ module Stats
     end
 
     def self.get()
-        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
+        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage, 'PID' => Process.pid}
     end
 
     @@config = JSON.parse(File.read("/etc/stat-monitor-client.rc")) 
 
+    #To do: make sure all loaded data are the correct type?
     if @@config.include?'monitoredMounts'
       @@monitoredMounts = Set.new(@@config['monitoredMounts'])
     else
