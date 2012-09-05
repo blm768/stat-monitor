@@ -1,3 +1,5 @@
+require 'set'
+
 module Stats
   class LocalStats
 
@@ -22,9 +24,24 @@ module Stats
 
     def self.loadStats()
       loadavg = File.open('/proc/loadavg')
-      loads = loadavg.readline.split(' ')[0 ... 3]
+      loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Float(str)}
       loadavg.close
       loads
+    end
+    
+    def self.diskUsage()
+      return {} if @@monitoredMounts.empty?
+      
+      diskData = `df -P | sed 1d`
+      disks = {}
+      
+      diskData.each_line do |line|
+        fields = line.split(' ')
+        name = fields[5 .. -1].join
+        disks[name] = Float(fields[4][0 .. -2]) if @@monitoredMounts.include? name
+      end
+
+      disks
     end
 
     def self.memStats()
@@ -56,7 +73,7 @@ module Stats
 
       if memFree
           if memTotal
-          memFree /= memTotal
+          memFree = memFree / memTotal * 100
         else
           memFree = nil
         end
@@ -64,7 +81,7 @@ module Stats
 
       if swapFree
         if swapTotal
-          swapFree /= swapTotal
+          swapFree = swapFree / swapTotal * 100
         else
           swapFree = nil
         end
@@ -74,9 +91,18 @@ module Stats
     end
 
     def self.get()
-        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats}
+        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
+    end
+
+    @@config = JSON.parse(File.read("/etc/stat-monitor-client.rc")) 
+
+    if @@config.include?'monitoredMounts'
+      @@monitoredMounts = Set.new(@@config['monitoredMounts'])
+    else
+      @@config.monitoredMounts = Set()
     end
 
   end
+  
 end
 

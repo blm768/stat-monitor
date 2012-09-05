@@ -1,0 +1,6 @@
+require 'json'
+require 'socket'
+
+socket = TCPSocket.open('127.0.0.1', 9445)
+puts socket.read
+

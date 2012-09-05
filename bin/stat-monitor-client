@@ -1,7 +1,21 @@
 require 'json'
+require 'socket'
 require 'pp'
 
 require 'stat-monitor'
 
 puts JSON.generate(Stats::LocalStats.get)
+connectionPort = 9445
 
+#Daemonize.
+
+exit()
+
+#Monitor incoming packets.
+socket = TCPServer.new(connectionPort)
+loop do
+  Thread.start(socket.accept) do |msg|
+    socket.write(JSON.generate(Stats::LocalStats.get))
+    socket.close
+  end
+end
