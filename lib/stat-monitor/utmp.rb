@@ -16,12 +16,13 @@ module Wtmp
 
   #To do: handle case where system only supports 64-bit operation (some wtmp entries will change to 64-bit).
 
-  def entries()
-    wtmp = File.read("/var/log/wtmp")
-    until wtmp.empty?
-      data = wtmp.unpack("slA#{UT_LINESIZE}a4A${UT_NAMESIZE}A{UT_HOSTSIZE}s2l3")
+  def Wtmp.entries()
+    utmp = File.read("/var/run/utmp")
+    until utmp.empty?
+      data = utmp.unpack("slA#{UT_LINESIZE}a4A#{UT_NAMESIZE}A#{UT_HOSTSIZE}s2l3")
       puts data
-      data = data[382 .. -1]
+      puts '------------'
+      utmp = utmp[384 .. -1]
     end
   end
 end

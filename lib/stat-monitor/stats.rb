@@ -1,6 +1,6 @@
 require 'set'
 
-require 'wtemp'
+require 'stat-monitor/utmp'
 
 module Stats
   class LocalStats
@@ -89,7 +89,7 @@ module Stats
         end
       end
 
-      Wtemp::entries()
+      Wtmp.entries()
       {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached, 'SwapCached' => swapCached}
     end
 
