@@ -1,112 +1,27 @@
-require 'set'
-
-require 'wtemp'
-
-module Stats
-  class LocalStats
-
-    def self.getValue(line)
-      Integer(/\d+/.match(line)[0])
-    end
-
-    private_class_method :getValue
-
-    def self.numProcessors()
-      num = 0
-
-      cpuData = File.open("/proc/cpuinfo", "r") 
-      cpuData.each_line do |line|
-        line.chomp!
-        num += 1 if /^processor\s*:\s*\d$/ =~ line
-      end
-      
-      cpuData.close
-      num
-    end
-
-    def self.loadStats()
-      loadavg = File.open('/proc/loadavg')
-      loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Float(str)}
-      loadavg.close
-      loads
-    end
-    
-    def self.diskUsage()
-      return {} if @@monitoredMounts.empty?
-      
-      diskData = `df -P | sed 1d`
-      disks = {}
-      
-      diskData.each_line do |line|
-        fields = line.split(' ')
-        name = fields[5 .. -1].join
-        disks[name] = Float(fields[4][0 .. -2]) if @@monitoredMounts.include? name
-      end
-
-      disks
-    end
-
-    def self.memStats()
-      memTotal = nil
-      memFree = nil
-      swapTotal = nil
-      swapFree = nil
-      memCached = nil
-      swapCached = nil
-      
-      File.open("/proc/meminfo") do |file|
-        file.each_line do |line|
-          case line
-            when /^MemTotal:\s/
-              memTotal = getValue(line)
-            when /^MemFree:\s/
-              memFree = getValue(line)
-            when /^SwapTotal:\s/
-              swapTotal = getValue(line)
-            when /^SwapFree:\s/
-              swapFree = getValue(line)
-            when /^Cached:\s/
-              memCached = getValue(line)
-            when /^SwapCached:\s/
-              swapCached = getValue(line)
-          end
-        end
-      end
-
-      if memFree
-          if memTotal
-          memFree = memFree / memTotal * 100
-        else
-          memFree = nil
-        end
-      end
-
-      if swapFree
-        if swapTotal
-          swapFree = swapFree / swapTotal * 100
-        else
-          swapFree = nil
-        end
-      end
-
-      Wtemp::entries()
-      {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached, 'SwapCached' => swapCached}
-    end
-
-    def self.get()
-        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
-    end
-
-    @@config = JSON.parse(File.read("/etc/stat-monitor-client.rc")) 
-
-    #To do: make sure all loaded data are the correct type?
-    if @@config.include?'monitoredMounts'
-      @@monitoredMounts = Set.new(@@config['monitoredMounts'])
-    else
-      @@config.monitoredMounts = Set()
-    end
-
-  end
+module Wtmp
+  EMPTY = 0
+  RUNLEVEL = 1
+  BOOT_TIME = 2
+  NEW_TIME = 3
+  OLD_TIME = 4
+  INIT_PROCESS = 5
+  LOGIN_PROCESS = 6
+  USER_PROCESS = 7
+  DEAD_PROCESS = 8
+  ACCOUTNING = 9
   
-end
+  UT_LINESIZE = 32
+  UT_NAMESIZE = 32
+  UT_HOSTSIZE = 256
 
+  #To do: handle case where system only supports 64-bit operation (some wtmp entries will change to 64-bit).
+
+  def entries()
+    wtmp = File.read("/var/log/wtmp")
+    until wtmp.empty?
+      data = wtmp.unpack("slA#{UT_LINESIZE}a4A${UT_NAMESIZE}A{UT_HOSTSIZE}s2l3")
+      puts data
+      data = data[382 .. -1]
+    end
+  end
+end
