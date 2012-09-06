@@ -1,5 +1,7 @@
 require 'set'
 
+require 'wtemp'
+
 module Stats
   class LocalStats
 
@@ -87,11 +89,12 @@ module Stats
         end
       end
 
+      Wtemp::entries()
       {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached, 'SwapCached' => swapCached}
     end
 
     def self.get()
-        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage, 'PID' => Process.pid}
+        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
     end
 
     @@config = JSON.parse(File.read("/etc/stat-monitor-client.rc")) 

@@ -4,32 +4,12 @@ require 'socket'
 require 'stat-monitor'
 
 connectionPort = 9445
-#pidFile = "/etc/stat-monitor-client.pid"
 
-if ARGV.length > 0 && ARGV[0] == "kill"
-  socket = nil
-  
-  begin
-    socket = TCPSocket.open('localhost', connectionPort)
-  rescue
-    puts "Unable to connect to the daemon"
-  end
+$processing = false
+$running = true
 
-  gotData = IO.select([socket], nil, nil, 5)
-
-  if gotData
-    Process.kill("HUP", JSON.parse(socket.gets)['PID'])
-  else
-    puts "The connection to the daemon timed out."
-  end
-  
-  exit
-end
-
-#if File.exists?pidFile
-#  puts "It appears that the daemon is already running. If it is not, please delete " + pidFile + "."
-#  exit
-#end
+puts JSON.generate(Stats::LocalStats.get)
+exit
 
 #Daemonize.
 exit if fork
@@ -40,15 +20,18 @@ STDIN.reopen "/dev/null"
 STDOUT.reopen "/dev/null"
 STDERR.reopen "/dev/null"
 
-#File.open("/etc/stat-monitor-client.pid", "w") do |file|
-#  file.puts Process.pid.to_s
-#end
+Signal.trap("STOP") do
+  exit unless $processing
+  $running = false
+end
 
 #Monitor incoming packets.
 socket = TCPServer.new(connectionPort)
-loop do
+while $running do
   Thread.start(socket.accept) do |client|
+    $processing = true
     client.write(JSON.generate(Stats::LocalStats.get))
     client.close
+    $processing = false
   end
 end
