@@ -14,4 +14,5 @@ Gem::Specification.new do |gem|
   gem.name          = "stat-monitor"
   gem.require_paths = ["lib"]
   gem.version       = Stat::Monitor::VERSION
+  gem.extensions    = ["ext/stat-monitor/extconf.rb"]
 end
