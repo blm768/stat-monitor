@@ -1,6 +1,14 @@
+require 'base64'
 require 'json'
+require 'openssl'
 require 'socket'
 
+privateKey = OpenSSL::PKey::RSA.new File.read '/etc/stat-monitor-client/private_key.pem'
+
+message = Base64.encode64(privateKey.private_encrypt(Time.new.to_i.to_s)).gsub(/\n/, "")[0 .. -4]
+
 socket = TCPSocket.open('127.0.0.1', 9445)
-puts socket.read
+socket.puts(message)
+
+puts socket.gets unless socket.closed?
 

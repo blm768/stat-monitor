@@ -3,7 +3,7 @@ require 'set'
 
 require 'statmonitor/utmp'
 
-module Stats
+module StatMonitor
   class LocalStats
 
     def self.getValue(line)
@@ -98,15 +98,15 @@ module Stats
         {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
     end
 
-    @@config = JSON.parse(File.read("/etc/stat-monitor-client.rc")) 
+    @@config = JSON.parse(File.read("/etc/stat-monitor-client/stat-monitor-client.rc")) 
 
     #To do: make sure all loaded data are the correct type?
     if @@config.include?'monitoredMounts'
       @@monitoredMounts = Set.new(@@config['monitoredMounts'])
     else
-      @@config.monitoredMounts = Set()
+      @@monitoredMounts = Set()
     end
-
+    
   end
   
 end

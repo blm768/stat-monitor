@@ -1,4 +1,6 @@
+require 'base64'
 require 'json'
+require 'openssl'
 require 'socket'
 
 require 'statmonitor'
@@ -8,9 +10,14 @@ connectionPort = 9445
 $processing = false
 $running = true
 
-puts JSON.generate(Stats::LocalStats.get)
-exit
+begin
+  publicKey = OpenSSL::PKey::RSA.new(File.read '/etc/stat-monitor-client/public_key.pem')
+rescue
+  puts "Unable to open public key file"
+  exit 1
+end
 
+=begin
 #Daemonize.
 exit if fork
 Process.setsid
@@ -19,6 +26,7 @@ Dir.chdir "/"
 STDIN.reopen "/dev/null"
 STDOUT.reopen "/dev/null"
 STDERR.reopen "/dev/null"
+=end
 
 Signal.trap("STOP") do
   exit unless $processing
@@ -30,8 +38,27 @@ socket = TCPServer.new(connectionPort)
 while $running do
   Thread.start(socket.accept) do |client|
     $processing = true
-    client.write(JSON.generate(Stats::LocalStats.get))
+
+    #To do: make timeout configurable?
+    gotMessage = IO.select([client], nil, nil, 3)
+
+    if gotMessage then
+      message = client.gets
+      message = publicKey.public_decrypt(Base64.decode64(message)) 
+      puts message
+      remoteTime = message.to_i
+      localTime = Time.new.to_i
+
+      if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
+        client.write(JSON.generate(StatMonitor::LocalStats.get)) 
+      else
+        #Invalid timestamp; ignore
+        #To do: log these events?
+      end
+    end
+    
     client.close
+
     $processing = false
   end
 end
