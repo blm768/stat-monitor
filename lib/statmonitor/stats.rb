@@ -1,6 +1,7 @@
+require 'rubygems'
 require 'set'
 
-require 'stat-monitor/utmp'
+require 'statmonitor/utmp'
 
 module Stats
   class LocalStats
@@ -89,8 +90,8 @@ module Stats
         end
       end
 
-      Wtmp.entries()
-      {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached, 'SwapCached' => swapCached}
+      {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached,
+        'SwapCached' => swapCached, 'Users' => Set.new(StatMonitor::Utmp::users).to_a}
     end
 
     def self.get()

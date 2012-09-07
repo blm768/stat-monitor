@@ -1,7 +1,7 @@
 require 'json'
 require 'socket'
 
-require 'stat-monitor'
+require 'statmonitor'
 
 connectionPort = 9445
 
