@@ -1,0 +1,7 @@
+{
+  "MonitoredMounts": [
+    "/",
+    "/boot"
+  ],
+  "Timeout": 3
+}

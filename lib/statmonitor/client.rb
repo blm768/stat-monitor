@@ -82,12 +82,18 @@ module StatMonitor
               localTime = Time.new.to_i
 
               if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
-                client.write(JSON.generate(StatMonitor::LocalStats.get)) 
+                client.puts(JSON.generate(StatMonitor::LocalStats.get)) 
               else
-                #Invalid timestamp; ignore
-                #To do: log these events?
+                #Invalid timestamp
+                client.puts(JSON.generate({'Status' => 3, 'Message' => 'Timestamp does not match local time'}))
               end
+            else
+              #Invalid checksum
+              client.puts(JSON.generate({'Status' => 2, 'Message' => 'Invalid checksum'}))
             end
+          else
+            #Message was too short
+            client.puts(JSON.generate({'Status' => 1, 'Message' => 'Invalid message length'}))
           end
           
           client.close
@@ -97,24 +103,5 @@ module StatMonitor
       end
     end
 
-        #Stuff for unit testing
-    def self.test()
-      privateKey = OpenSSL::PKey::RSA.new(File.read('/etc/stat-monitor-client/private_key.pem'))
-
-      encrypted = privateKey.private_encrypt(Time.new.to_i.to_s)
-      checksum = Digest::MD5.digest(encrypted)
-      message = Base64.encode64(checksum + encrypted).gsub(/\n/, "")
-
-      socket = TCPSocket.open('127.0.0.1', 9445)
-      socket.puts(message)
-
-      gotMessage = IO.select([socket], nil, nil, 3)
-
-      if gotMessage
-        return socket.gets
-      end
-
-      nil
-    end
   end
 end

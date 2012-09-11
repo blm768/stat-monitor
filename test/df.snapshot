@@ -1,0 +1,5 @@
+/dev/mapper/VolGroup-lv_root  12941636   1074968  11209260       9% /
+tmpfs                   510348         0    510348       0% /dev/shm
+/dev/sda1               495844     40729    429515       9% /boot
+v-root               243862672  28171260 215691412      12% /vagrant
+/dev/sda1               495844     40729    429515       9% /mnt/space test

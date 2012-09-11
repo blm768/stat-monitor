@@ -1,22 +1,16 @@
 #!/usr/bin/env rake
 require "bundler/gem_tasks"
+require "rspec/core/rake_task"
 
 require 'rubygems'
 require 'rake'
 #require 'rake/extensiontask'
 require 'bundler'
 
-=begin
-Rake::ExtensionTask.new("hello_world") do |extension|
-  extension.lib_dir = 'lib/stat-monitor'
+task :default => :spec
+
+desc "Run specs"
+RSpec::Core::RakeTask.new(:spec) do |task|
+  task.rspec_opts =%w{--color --format progress}
+  task.pattern = 'spec/*_spec.rb'
 end
-
-task :chmod do
-  File.chmod(0775, 'lib/stat-monitor/utmp.so')
-end
-
-task :build => [:clean, :compile, :chmod]
-
-Bundler::GemHelper.install_tasks
-=end
-

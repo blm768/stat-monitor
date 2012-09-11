@@ -122,21 +122,22 @@ module StatMonitor
     end
     
     #Stuff for unit testing; allows using snapshots of /proc files, etc.
-    @@meminfo_file = '/proc/meminfo'
-    @@cpuinfo_file = '/proc/cpuinfo'
-    @@loadavg_file = '/proc/loadavg'
-    @@utmp_file = '/var/run/utmp'
-
-    @@df_command = 'df -P | sed 1d'
-    
-    def self.setTestMode(snapshotDir)
-      @@meminfo_file = File.join(snapshotDir, 'proc/meminfo')
-      @@cpuinfo_file = File.join(snapshotDir, 'proc/cpuinfo')
-      @@loadavg_file = File.join(snapshotDir, 'proc/loadavg')
-      @@utmp_file = File.join(snapshotDir, 'var/run/utmp')
-      @@df_command = 'cat "' + File.join(snapshotDir, 'df.snapshot') + '"'
-    end
-  end
+    def self.set_root(root)
+      @@root_dir = root
+      if root == '/'
+        @@df_command = 'df -P | sed 1d'
+      else
+        @@df_command = 'cat "' + File.join(@@root_dir, 'df.snapshot') + '"'
+      end
   
+      @@meminfo_file = File.join(@@root_dir, 'proc/meminfo')
+      @@cpuinfo_file = File.join(@@root_dir, 'proc/cpuinfo')
+      @@loadavg_file = File.join(@@root_dir, 'proc/loadavg')
+      @@utmp_file = File.join(@@root_dir, 'var/run/utmp')
+    end
+
+    set_root(ENV['STATMONITOR_ROOT'] || '/')
+
+  end
 end
 
