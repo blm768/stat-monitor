@@ -1,64 +1,11 @@
+#!/usr/bin/ruby
+
 require 'base64'
 require 'json'
 require 'openssl'
 require 'socket'
 
-require 'statmonitor'
+require 'statmonitor/client'
 
-connectionPort = 9445
+StatMonitor::Client.run()
 
-$processing = false
-$running = true
-
-begin
-  publicKey = OpenSSL::PKey::RSA.new(File.read '/etc/stat-monitor-client/public_key.pem')
-rescue
-  puts "Unable to open public key file"
-  exit 1
-end
-
-=begin
-#Daemonize.
-exit if fork
-Process.setsid
-exit if fork
-Dir.chdir "/"
-STDIN.reopen "/dev/null"
-STDOUT.reopen "/dev/null"
-STDERR.reopen "/dev/null"
-=end
-
-Signal.trap("STOP") do
-  exit unless $processing
-  $running = false
-end
-
-#Monitor incoming packets.
-socket = TCPServer.new(connectionPort)
-while $running do
-  Thread.start(socket.accept) do |client|
-    $processing = true
-
-    #To do: make timeout configurable?
-    gotMessage = IO.select([client], nil, nil, 3)
-
-    if gotMessage then
-      message = client.gets
-      message = publicKey.public_decrypt(Base64.decode64(message)) 
-      puts message
-      remoteTime = message.to_i
-      localTime = Time.new.to_i
-
-      if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
-        client.write(JSON.generate(StatMonitor::LocalStats.get)) 
-      else
-        #Invalid timestamp; ignore
-        #To do: log these events?
-      end
-    end
-    
-    client.close
-
-    $processing = false
-  end
-end

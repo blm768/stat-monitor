@@ -1,3 +1,4 @@
+require 'json'
 require 'rubygems'
 require 'set'
 
@@ -15,7 +16,7 @@ module StatMonitor
     def self.numProcessors()
       num = 0
 
-      cpuData = File.open("/proc/cpuinfo", "r") 
+      cpuData = File.open(@@cpuinfo_file, "r") 
       cpuData.each_line do |line|
         line.chomp!
         num += 1 if /^processor\s*:\s*\d$/ =~ line
@@ -26,16 +27,18 @@ module StatMonitor
     end
 
     def self.loadStats()
-      loadavg = File.open('/proc/loadavg')
+      loadavg = File.open(@@loadavg_file)
       loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Float(str)}
       loadavg.close
       loads
     end
     
     def self.diskUsage()
+      #To do: error values for mount points that are specified but not present?
       return {} if @@monitoredMounts.empty?
       
-      diskData = `df -P | sed 1d`
+      #To do: error checking?
+      diskData = `#{@@df_command}`
       disks = {}
       
       diskData.each_line do |line|
@@ -55,7 +58,7 @@ module StatMonitor
       memCached = nil
       swapCached = nil
       
-      File.open("/proc/meminfo") do |file|
+      File.open(@@meminfo_file) do |file|
         file.each_line do |line|
           case line
             when /^MemTotal:\s/
@@ -91,22 +94,48 @@ module StatMonitor
       end
 
       {'Total' => memTotal, 'Free' => memFree, 'SwapTotal' => swapTotal, 'SwapFree' => swapFree, 'Cached' => memCached,
-        'SwapCached' => swapCached, 'Users' => Set.new(StatMonitor::Utmp::users).to_a}
+        'SwapCached' => swapCached}
     end
 
     def self.get()
-        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage}
+        {'Processors' => numProcessors, 'Memory' => memStats, 'Load' => loadStats, 'Disks' => diskUsage, 
+          'Users' => Set.new(StatMonitor::Utmp::users(@@utmp_file)).to_a, 'Status' => 0, 'Message' => 'OK'}
     end
 
     @@config = JSON.parse(File.read("/etc/stat-monitor-client/stat-monitor-client.rc")) 
 
     #To do: make sure all loaded data are the correct type?
-    if @@config.include?'monitoredMounts'
-      @@monitoredMounts = Set.new(@@config['monitoredMounts'])
+    if @@config.include?'MonitoredMounts'
+      @@monitoredMounts = Set.new(@@config['MonitoredMounts'])
     else
-      @@monitoredMounts = Set()
+      @@monitoredMounts = Set.new
     end
     
+    if @@config.include?'Timeout'
+      @@timeout = @@config['Timeout']
+    else
+        timeout = @@config['Timeout']
+    end
+    
+    def self.timeout()
+      return @@timeout
+    end
+    
+    #Stuff for unit testing; allows using snapshots of /proc files, etc.
+    @@meminfo_file = '/proc/meminfo'
+    @@cpuinfo_file = '/proc/cpuinfo'
+    @@loadavg_file = '/proc/loadavg'
+    @@utmp_file = '/var/run/utmp'
+
+    @@df_command = 'df -P | sed 1d'
+    
+    def self.setTestMode(snapshotDir)
+      @@meminfo_file = File.join(snapshotDir, 'proc/meminfo')
+      @@cpuinfo_file = File.join(snapshotDir, 'proc/cpuinfo')
+      @@loadavg_file = File.join(snapshotDir, 'proc/loadavg')
+      @@utmp_file = File.join(snapshotDir, 'var/run/utmp')
+      @@df_command = 'cat "' + File.join(snapshotDir, 'df.snapshot') + '"'
+    end
   end
   
 end

@@ -15,4 +15,6 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
   gem.version       = Stat::Monitor::VERSION
   gem.extensions    = ["ext/statmonitor/extconf.rb"]
+
+  gem.add_development_dependency('rspec')
 end

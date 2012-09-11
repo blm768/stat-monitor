@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <utmp.h>
 
 #include "ruby.h"
@@ -6,7 +7,9 @@
 VALUE StatMonitorModule;
 VALUE UtmpModule;
 
-static VALUE module_function_users(VALUE filename) {
+static VALUE module_function_users(VALUE self, VALUE filename) {
+  StringValue(filename);
+  char* cFilename = StringValueCStr(filename);
   VALUE users = rb_ary_new();
   size_t numEntries;
   FILE *file;
@@ -15,9 +18,14 @@ static VALUE module_function_users(VALUE filename) {
   struct utmp utmp_buf;
 
   //Open file.
-  file = fopen("/var/run/utmp", "rb");
+  file = fopen(cFilename, "rb");
   if(!file) {
-    rb_raise(rb_eIOError, "Unable to open /var/run/utmp");
+    //Note: unable to free buffer. Can this be fixed?
+    char* msgStart = "Unable to open ";
+    char* msg = malloc(strlen(msgStart) + strlen(cFilename));
+    strcpy(msg, msgStart);
+    strcat(msg, cFilename);
+    rb_raise(rb_eIOError, msg);
   }
 
   //Get file size.
@@ -36,11 +44,14 @@ static VALUE module_function_users(VALUE filename) {
     }
   }
   
+  fclose(file);
+  free(cFilename);
+
   return users;
 }
 
 void Init_utmp() {
   StatMonitorModule = rb_define_module("StatMonitor");
   UtmpModule = rb_define_module_under(StatMonitorModule, "Utmp");
-  rb_define_module_function(UtmpModule, "users", module_function_users, 0);
+  rb_define_module_function(UtmpModule, "users", module_function_users, 1);
 }
