@@ -7,7 +7,7 @@ config = StatMonitor::Config.new('/etc/stat-monitor-client/stat-monitor-client.r
 client = StatMonitor::Client.new(config)
 
 #To do: switch on existence of snapshot test mode?
-#client.daemonize()
+client.daemonize()
 
 client.run()
 

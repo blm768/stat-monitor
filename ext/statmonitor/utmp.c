@@ -21,11 +21,14 @@ static VALUE module_function_users(VALUE self, VALUE filename) {
   file = fopen(cFilename, "rb");
   if(!file) {
     //Note: unable to free buffer. Can this be fixed?
-    char* msgStart = "Unable to open ";
-    char* msg = malloc(strlen(msgStart) + strlen(cFilename));
-    strcpy(msg, msgStart);
-    strcat(msg, cFilename);
-    rb_raise(rb_eIOError, msg);
+    char buf[512] = "Unable to open ";
+    //Copy into the message buffer.
+    strncpy(buf + strlen(buf), cFilename, 512 - 1 - strlen(buf));
+    //Make sure the buffer ends with a null character.
+    buf[511] = '\0';
+    //Free the filename string.
+    free(cFilename);
+    rb_raise(rb_eIOError, buf);
   }
 
   //Get file size.

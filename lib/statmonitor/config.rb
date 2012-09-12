@@ -1,6 +1,7 @@
 module StatMonitor
 	class Config
 	attr_reader :monitored_mounts
+  attr_reader :port
 	attr_reader :timeout
 	attr_reader :root_dir
 	attr_reader :df_command
@@ -8,16 +9,18 @@ module StatMonitor
 	attr_reader :cpuinfo_file
 	attr_reader :loadavg_file
 	attr_reader :utmp_file
+  attr_reader :public_key_file
 
 		def initialize(filename)
 			#To do: error checking
-			config = JSON.parse(File.read(filename)) 
+      file = File.open(filename, "r")
+			config = JSON.parse(file.read)
 
 	    #To do: make sure all loaded data are the correct type?
 	    if config.include?'MonitoredMounts'
-	      @monitoredMounts = Set.new(config['MonitoredMounts'])
+	      @monitored_mounts = Set.new(config['MonitoredMounts'])
 	    else
-	      @monitoredMounts = Set.new
+	      @monitored_mounts = Set.new
 	    end
 	    
 	    if config.include?'Timeout'

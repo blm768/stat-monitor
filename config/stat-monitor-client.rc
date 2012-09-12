@@ -3,5 +3,6 @@
     "/",
     "/boot"
   ],
-  "Timeout": 3
+  "Timeout": 3,
+  "Port": 9445
 }

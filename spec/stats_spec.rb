@@ -2,50 +2,59 @@ require 'json'
 
 require 'spec_helper'
 
-CORRECT_HASH = {"Load"=>[0.0, 0.0, 0.0], "Disks"=>{"/"=>9.0, "/boot"=>9.0}, "Users"=>["vagrant"], "Memory"=>{"SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>0, "SwapCached"=>0}, "Processors"=>1, 'Status' => 0, 'Message' => 'OK'}
-
-privateKey = OpenSSL::PKey::RSA.new(File.read('/etc/stat-monitor-client/private_key.pem'))
-
-encrypted = privateKey.private_encrypt(Time.new.to_i.to_s)
-checksum = Digest::MD5.digest(encrypted)
-message = Base64.encode64(checksum + encrypted).gsub(/\n/, "")
-
-
-def testMsg(msg)
-  socket = TCPSocket.open('127.0.0.1', 9445)
-  socket.puts(msg)
-
-  gotMessage = IO.select([socket], nil, nil, 3)
-
-  return JSON.parse(socket.gets) if gotMessage
-
-  nil
-end
-
 describe StatMonitor::LocalStats do
+  before(:all) do
+    ENV['STATMONITOR_ROOT'] = File.join(Dir.pwd, 'test/')
+
+    @CORRECT_HASH = {"Disks"=>{"/boot"=>9.0, "/"=>9.0}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0.0, 0.0, 0.0]}
+    @MESSAGE_TOO_SHORT_HASH = {'Status' => 1, 'Message' => 'Invalid message length'}
+    @BAD_CHECKSUM_HASH  = {'Status' => 2, 'Message' => 'Invalid checksum'}
+    @BAD_TIMESTAMP_HASH = {'Status' => 3, 'Message' => 'Timestamp does not match local time'}
+
+
+    privateKey = OpenSSL::PKey::RSA.new(File.read('/etc/stat-monitor-client/private_key.pem'))
+
+    encrypted = privateKey.private_encrypt(Time.new.to_i.to_s)
+    encrypted_invalid = privateKey.private_encrypt((Time.new.to_i - 30 * 60).to_s)
+    checksum = Digest::MD5.digest(encrypted)
+    checksum_invalid = Digest::MD5.digest(encrypted_invalid)
+    @message = Base64.encode64(checksum + encrypted).gsub(/\n/, "")
+    @message_invalid = Base64.encode64(checksum_invalid + encrypted_invalid).gsub(/\n/, "")
+
+    @config = StatMonitor::Config.new("config/stat-monitor-client.rc")
+
+    @stats = StatMonitor::LocalStats.new(@config)
+
+    @client = StatMonitor::Client.new(@config)
+
+    @remote_client = fork || exec("stat-monitor-client")
+    sleep(1)
+  end
+
   it "Generates correct data" do
     puts(Dir.pwd)
-    StatMonitor::LocalStats.set_root(File.join(Dir.pwd, 'test'))
-    StatMonitor::LocalStats.get().should eql CORRECT_HASH
+    @stats.get().should eql @CORRECT_HASH
   end
 
-
-  ENV['STATMONITOR_ROOT'] = File.join(Dir.pwd, 'test/')
-  #client = fork || exec('stat-monitor-client')
-  sleep(2)
-  begin
-    it "Properly returns data over the network" do
-          
-      testMsg(message).should eql CORRECT_HASH
-    end
-
-    it "Properly handles empty or too-short messages" do
-      #test
-    end
-  rescue
-    #Process.kill('STOP', client)
-    raise $!
+  it "Properly returns data over the network" do
+    testMsg(@message, @config).should eql @CORRECT_HASH
   end
-  #Process.kill('STOP', client)
+
+  it "Properly handles empty or too-short messages" do
+    @client.process_message("").should eql @MESSAGE_TOO_SHORT_HASH
+    @client.process_message("test").should eql @MESSAGE_TOO_SHORT_HASH
+  end
+
+  it "Properly handles messages with invalid checksums" do
+    @client.process_message("This messsage has a bad checksum!").should eql @BAD_CHECKSUM_HASH
+  end
+
+  it "Properly handles messages with invalid timestamps" do
+    @client.process_message(@message_invalid).should eql @BAD_TIMESTAMP_HASH
+  end
+
+  after(:all) do
+    Process.kill('STOP', @remote_client)
+  end
 end
 
