@@ -8,23 +8,19 @@ require 'socket'
 require 'statmonitor'
 
 module StatMonitor
-  module Client
-    def self.run()
-      #To do: make configurable?
-      connectionPort = 9445
+  class Client
+    def initialize(config)
+      @config = config
 
-      $processing = false
-      $running = true
+      @processing = false
+      @running = true
 
-      begin
-        publicKey = OpenSSL::PKey::RSA.new(File.read '/etc/stat-monitor-client/public_key.pem')
-      rescue
-        puts "Unable to open public key file"
-        exit 1
-      end
+      @publicKey = OpenSSL::PKey::RSA.new(File.read config.public_key)
 
-=begin
-      #Daemonize.
+      @socket = TCPServer.new(config.port)
+    end
+
+    def daemonize()
       exit if fork
       Process.setsid
       exit if fork
@@ -32,36 +28,16 @@ module StatMonitor
       STDIN.reopen "/dev/null"
       STDOUT.reopen "/dev/null"
       STDERR.reopen "/dev/null"
-=end
+    end
 
+    def run()
       Signal.trap("STOP") do
         exit unless $processing
         $running = false
       end
-
-      #Reads the first line sent over the socket, potentially discarding data sent afterward. If the connection times out
-      #before the newline is read, returns nil
-      def self.readFirstLineWithTimeout(socket, timeout)
-        buf = ""
-        loop do
-          gotMessage = IO.select([socket], nil, nil, timeout)
-
-          return nil unless gotMessage
-          
-          #To do: check for EOFError? (probably shouldn't appear with select())
-          msg = socket.readpartial(1024)
-          nlIndex = msg.index("\n")
-
-          if nlIndex then
-            return buf + msg[0 ... nlIndex]
-          else
-            buf += msg
-          end
-        end
-      end
       
       #Monitor incoming packets.
-      socket = TCPServer.new(connectionPort)
+      
       while $running do
         Thread.start(socket.accept) do |client|
           $processing = true
@@ -102,6 +78,29 @@ module StatMonitor
         end
       end
     end
+
+    #Reads the first line sent over the socket, potentially discarding data sent afterward. If the connection times out
+      #before the newline is read, returns nil
+      def self.readFirstLineWithTimeout(timeout)
+        buf = ""
+        loop do
+          gotMessage = IO.select([@socket], nil, nil, timeout)
+
+          return nil unless gotMessage
+          
+          #To do: check for EOFError? (probably shouldn't appear with select())
+          msg = @socket.readpartial(1024)
+          nlIndex = msg.index("\n")
+
+          if nlIndex then
+            return buf + msg[0 ... nlIndex]
+          else
+            buf += msg
+          end
+        end
+      end
+
+      private_class_method :readFirstLineWithTimeout
 
   end
 end

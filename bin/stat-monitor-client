@@ -1,11 +1,13 @@
 #!/usr/bin/ruby
 
-require 'base64'
-require 'json'
-require 'openssl'
-require 'socket'
-
 require 'statmonitor/client'
 
-StatMonitor::Client.run()
+config = StatMonitor::Config.new('/etc/stat-monitor-client/stat-monitor-client.rc')
+
+client = StatMonitor::Client.new(config)
+
+#To do: switch on existence of snapshot test mode?
+#client.daemonize()
+
+client.run()
 
