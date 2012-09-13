@@ -5,6 +5,9 @@
 #include "ruby.h"
 
 VALUE StatMonitorModule;
+/*
+ *A module containing routines for parsing UTMP data
+*/
 VALUE UtmpModule;
 
 /*

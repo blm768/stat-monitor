@@ -14,3 +14,7 @@ RSpec::Core::RakeTask.new(:spec) do |task|
   task.rspec_opts =%w{--color --format progress}
   task.pattern = 'spec/*_spec.rb'
 end
+
+task :docs do
+  system('rdoc --exclude spec --exclude snapshot --exclude rpm')
+end

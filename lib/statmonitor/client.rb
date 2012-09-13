@@ -8,8 +8,58 @@ require 'socket'
 require 'statmonitor'
 
 module StatMonitor
-  #This class represents a stat monitor client. Each monitored machine runs a client; the protocol is as follows:
+  #This class represents a stat monitor client. Each monitored machine runs a client.
+  #
+  #==Data format
+  #Information is sent from the client to the server as a JSON structure. Its fields are defined as follows:
+  #* "Processors": an integer representing the number of processors
+  #* "Memory": a dictionary containing the following items:
+  #  * "Total": the total amount of physical memory
+  #  * "Cached": the amount of cached physical memory
+  #  * "Free": the amount of free physical memory as a percentage of total physical memory
+  #  * "Swap": the total amount of swap space
+  #  * "SwapCached": the amount of cached swap space
+  #  * "SwapFree": the amount of free swap space as a percentage of total swap space
+  #
+  #* "Disks": a dictionary with disk names as the keys and floating-point numbers representing disk usage percentages as the values
+  #* "Load": an array of three floating-point numbers representing the 5-, 10-, and 15-minute load averages
+  #* "Users": an array containing the name of each user that is currently logged in
+  #* "Status": 0 indicates success; any other value represents a network or protocol error.
+  #* "Message": Holds any error messages produced. If there is no error, the value is the string "OK".
+  #
+  #If the value of any field cannot be reliably determined, the field will be encoded as a null value. Field values should not be null in any other situation.
   # 
+  #==Protocol
+  #
+  #Each client listens on TCP port 9445 for a connection from the server. When the server wishes to retrieve load data,
+  #it performs the following steps:
+  #
+  #* Retrieve the current system time as seconds from the Unix epoch in GMT
+  #* Convert the integer representing the time to a string and encrypt it with the RSA key specified in the configuration file
+  #* Calculate the MD5 checksum of the encrypted data in raw binary format (using Digest:MD5.digest() instead of hexdigest())
+  #* Concatenate the checksum and the encrypted data, then encode them in base64 format
+  #* Remove any newline characters in the encoded string
+  #* Initiate a TCP connection with the client
+  #* Send the encoded time to the client, followed by a newline character
+  #
+  #When the connection is made, the client will:
+  #
+  #* Attempt to receive the message up to the newline, timing out if there is a long enough gap in transmission
+  #* Verify that the checksum is correct
+  #* Decode and decrypt the message
+  #* Parse the message as an integer
+  #* Compare the timestamp in the message to the current system time
+  #* Ensure that the timestamp is within 15 minutes of the client's local time
+  #* Send the JSON data to the client as a single line terminated with a newline character
+  #* Close the connection to the client
+  #
+  #===Error messages
+  #If there is a protocol- or network-related error on the client side, only the "Status" and "Message" fields will be
+  #present in the JSON message. Their values are defined as follows:
+  #* If the server's message was too short, "Status" = 1, and "Message" = "Invalid message length".
+  #* If the checksum is not valid, "Status" = 2, and "Message" = "Invalid checksum".
+  #* If the timestamp provided in the message is not within 15 minutes of the client's time, "Status" = 3, and "Message" = "Timestamp does not match local time".
+  #
   class Client
     #Creates the client with a given configuration object.
     #For details on the configuration object, see the docs for StatMonitor::Config.

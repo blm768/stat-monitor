@@ -1,3 +1,4 @@
 module StatMonitor
-    VERSION = "0.0.1"
+  #The current library version
+  VERSION = "0.8.1"
 end
