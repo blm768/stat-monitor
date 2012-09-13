@@ -8,7 +8,8 @@ require 'socket'
 require 'statmonitor'
 
 module StatMonitor
-  #This class represents a stat monitor client.
+  #This class represents a stat monitor client. Each monitored machine runs a client; the protocol is as follows:
+  # 
   class Client
     #Creates the client with a given configuration object.
     #For details on the configuration object, see the docs for StatMonitor::Config.
