@@ -16,5 +16,6 @@ Gem::Specification.new do |gem|
   gem.version       = StatMonitor::VERSION
   gem.extensions    = ["ext/statmonitor/extconf.rb"]
 
+  gem.add_dependency('json')
   gem.add_development_dependency('rspec')
 end

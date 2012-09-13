@@ -8,7 +8,10 @@ require 'socket'
 require 'statmonitor'
 
 module StatMonitor
+  #This class represents a stat monitor client.
   class Client
+    #Creates the client with a given configuration object.
+    #For details on the configuration object, see the docs for StatMonitor::Config.
     def initialize(config)
       @config = config
 
@@ -22,6 +25,8 @@ module StatMonitor
       @stats = StatMonitor::LocalStats.new(config)
     end
 
+    #Daemonizes the current process. Duplicates the functionality of
+    #Process.daemonize() because it is not available in all Ruby versions.
     def daemonize()
       exit if fork
       Process.setsid
@@ -32,6 +37,8 @@ module StatMonitor
       STDERR.reopen "/dev/null"
     end
 
+    #Runs the client. This function is meant to be run after the client is
+    #daemonized, so it enters an infinite loop and will not return.
     def run()
       @socket = TCPServer.new(@config.port)
 
@@ -57,6 +64,8 @@ module StatMonitor
       end
     end
 
+    #Processes a network message, including checksum verification, decryption, etc.
+    #Probably only useful for unit tests or when called by the run() method.
     def process_message(message)
       #Is there a long enough message?
       if message && message.length > 16 then

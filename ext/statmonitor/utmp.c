@@ -7,6 +7,15 @@
 VALUE StatMonitorModule;
 VALUE UtmpModule;
 
+/*
+ *call-seq:
+ *  users(filename)
+ *
+ *Opens and parses the given file as a set of records in UTMP format and returns an array
+ *of the username fields for all entries with the USER_PROCESS type.
+ *This function is most useful when used to read /var/run/utmp.
+*/
+
 static VALUE module_function_users(VALUE self, VALUE filename) {
   StringValue(filename);
   char* cFilename = StringValueCStr(filename);

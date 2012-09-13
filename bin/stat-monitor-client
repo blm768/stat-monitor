@@ -1,8 +1,13 @@
 #!/usr/bin/ruby
 
+#This file is an executable that serves as the client program for the stat monitor.
+#It runs as a daemon on each monitored machine.
+#
+#Its configuration file is stored in /etc/stat-monitor/client.rc.
+
 require 'statmonitor/client'
 
-config = StatMonitor::Config.new('/etc/stat-monitor-client/stat-monitor-client.rc')
+config = StatMonitor::Config.new('/etc/stat-monitor/client.rc')
 
 client = StatMonitor::Client.new(config)
 

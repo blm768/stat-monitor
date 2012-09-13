@@ -1,4 +1,0 @@
-require 'statmonitor'
-
-puts StatMonitor::Client.test()
-
