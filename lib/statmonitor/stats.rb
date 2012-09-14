@@ -36,6 +36,7 @@ module StatMonitor
 
     #Returns the 5-, 10-, and 15-minute load averages as an array of 3 floating-point values.
     def load_stats()
+      #To do: to ints?
       loadavg = File.open(@config.loadavg_file)
       loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Float(str)}
       loadavg.close
@@ -44,17 +45,22 @@ module StatMonitor
     
     #Returns a hash containing disk space percentages for each monitored mount point
     def disk_usage()
-      #To do: error values for mount points that are specified but not present?
       return {} if @config.monitored_mounts.empty?
       
       #To do: error checking?
-      diskData = `#{@config.df_command}`
       disks = {}
+
+      #To do: add to unit tests?
+      @config.monitored_mounts.each do |disk|
+        disks[disk] = nil
+      end
+
+      diskData = `#{@config.df_command}`
       
       diskData.each_line do |line|
         fields = line.split(' ')
         name = fields[5 .. -1].join
-        disks[name] = Float(fields[4][0 .. -2]) if @config.monitored_mounts.include? name
+        disks[name] = Integer(Float(fields[4][0 .. -2])) if @config.monitored_mounts.include? name
       end
 
       disks
@@ -80,17 +86,17 @@ module StatMonitor
         file.each_line do |line|
           case line
             when /^MemTotal:\s/
-              memTotal = getMemStatsValue(line)
+              memTotal = get_mem_stats_value(line)
             when /^MemFree:\s/
-              memFree = getMemStatsValue(line)
+              memFree = get_mem_stats_value(line)
             when /^SwapTotal:\s/
-              swapTotal = getMemStatsValue(line)
+              swapTotal = get_mem_stats_value(line)
             when /^SwapFree:\s/
-              swapFree = getMemStatsValue(line)
+              swapFree = get_mem_stats_value(line)
             when /^Cached:\s/
-              memCached = getMemStatsValue(line)
+              memCached = get_mem_stats_value(line)
             when /^SwapCached:\s/
-              swapCached = getMemStatsValue(line)
+              swapCached = get_mem_stats_value(line)
           end
         end
       end

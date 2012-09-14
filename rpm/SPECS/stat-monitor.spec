@@ -13,7 +13,7 @@ Source0: %{name}-%{version}.gem
 BuildRequires: rubygems
 #...
 
-%global gem_dir /usr/share/rubygems/
+%global gem_dir /usr/lib/ruby/gems/1.8/
 %global gem_instdir %{gem_dir}/gems/%{gem_name}-%{version}/
 %global gem_docdir %{gem_dir}/doc/%{gem_name}-%{version}/
 %global gem_cachefile %{gem_dir}/cache/%{gem_name}-%{version}.gem

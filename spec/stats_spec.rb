@@ -6,13 +6,13 @@ describe StatMonitor::LocalStats do
   before(:all) do
     ENV['STATMONITOR_ROOT'] = File.join(Dir.pwd, 'snapshot/')
 
-    @CORRECT_HASH = {"Disks"=>{"/boot"=>9.0, "/"=>9.0}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0.0, 0.0, 0.0]}
+    @CORRECT_HASH = {"Disks"=>{"/boot"=>9, "/"=>9}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0.0, 0.0, 0.0]}
     @MESSAGE_TOO_SHORT_HASH = {'Status' => 1, 'Message' => 'Invalid message length'}
     @BAD_CHECKSUM_HASH  = {'Status' => 2, 'Message' => 'Invalid checksum'}
     @BAD_TIMESTAMP_HASH = {'Status' => 3, 'Message' => 'Timestamp does not match local time'}
 
 
-    privateKey = OpenSSL::PKey::RSA.new(File.read('/etc/stat-monitor-client/private_key.pem'))
+    privateKey = OpenSSL::PKey::RSA.new(File.read('snapshot/private_key.pem'))
 
     encrypted = privateKey.private_encrypt(Time.new.to_i.to_s)
     encrypted_invalid = privateKey.private_encrypt((Time.new.to_i - 30 * 60).to_s)
@@ -21,13 +21,13 @@ describe StatMonitor::LocalStats do
     @message = Base64.encode64(checksum + encrypted).gsub(/\n/, "")
     @message_invalid = Base64.encode64(checksum_invalid + encrypted_invalid).gsub(/\n/, "")
 
-    @config = StatMonitor::Config.new("config/stat-monitor-client.rc")
+    @config = StatMonitor::Config.new("snapshot/client.rc")
 
     @stats = StatMonitor::LocalStats.new(@config)
 
     @client = StatMonitor::Client.new(@config)
 
-    @remote_client = fork || exec("stat-monitor-client")
+    #@remote_client = fork || exec("stat-monitor-client")
     sleep(1)
   end
 
@@ -54,7 +54,7 @@ describe StatMonitor::LocalStats do
   end
 
   after(:all) do
-    Process.kill('STOP', @remote_client)
+    #Process.kill('STOP', @remote_client)
   end
 end
 

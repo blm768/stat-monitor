@@ -5,9 +5,6 @@
 #include "ruby.h"
 
 VALUE StatMonitorModule;
-/*
- *A module containing routines for parsing UTMP data
-*/
 VALUE UtmpModule;
 
 /*
@@ -23,16 +20,13 @@ static VALUE module_function_users(VALUE self, VALUE filename) {
   StringValue(filename);
   char* cFilename = StringValueCStr(filename);
   VALUE users = rb_ary_new();
-  size_t numEntries;
   FILE *file;
   size_t fileSize;
-  size_t i;
   struct utmp utmp_buf;
 
   //Open file.
   file = fopen(cFilename, "rb");
   if(!file) {
-    //Note: unable to free buffer. Can this be fixed?
     char buf[512] = "Unable to open ";
     //Copy into the message buffer.
     strncpy(buf + strlen(buf), cFilename, 512 - 1 - strlen(buf));
@@ -67,6 +61,9 @@ static VALUE module_function_users(VALUE self, VALUE filename) {
 
 void Init_utmp() {
   StatMonitorModule = rb_define_module("StatMonitor");
+  /*
+   *A module containing routines for parsing UTMP data
+   */
   UtmpModule = rb_define_module_under(StatMonitorModule, "Utmp");
   rb_define_module_function(UtmpModule, "users", module_function_users, 1);
 }
