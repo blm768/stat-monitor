@@ -22,14 +22,6 @@ task :docs do
 end
 
 task :rpm do
-  # excluded = Set.new(['rpm', 'doc', 'pkg', 'snapshot', 'spec'])
-  # files = []
-  # Dir.glob('*') do |file|
-  #   files << file unless excluded.include? file
-  # end
-
-  # system 'tar -cf rpm/SOURCES/stat-monitor.tar.gz ' + files.join(' ')
-
   #Remove any old versions and rebuild.
   #To do: don't remove the current version.
   Dir.glob('pkg/*') { |file| FileUtils.rm_r(file)}
@@ -62,7 +54,7 @@ task :rpm do
 
   Dir.chdir(rake_dir)
 
-  #Clean up.
+  #Clean up, keeping our rpmbuild directory within the project tree.
   FileUtils.rm_r("rpmbuild")
   FileUtils.move(File.join(home_dir, "rpmbuild"), "rpmbuild")
   if(old_rpmdir)

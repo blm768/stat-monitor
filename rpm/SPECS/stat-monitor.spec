@@ -1,5 +1,3 @@
-%global app_root %{_datadir}/%{name}
-
 Summary: A simple remote status monitor for computers on a network
 Name: statmonitor
 Version: 0.8.1
@@ -12,9 +10,14 @@ Source0: %{name}-%{version}.gem
 #...
 #Requires(post):   chkconfig
 #...
-#BuildRequires: rubygem-rspec
+BuildRequires: rubygems
 #...
 BuildArch: noarch
+
+%global gem_dir /usr/share/rubygems/
+%global gem_instdir %{gem_dir}/gems/%{gem_name}%{version}/
+%global gem_name statmonitor
+%global gem_extdir %{_libdir}/gems/ext/%{gem_name}-%{version}/
 
 %description
 A simple remote status monitor for computers on a network
@@ -28,26 +31,32 @@ Requires:%{name} = %{version}-%{release}
 Documentation for %{name}
 
 %prep
-gem unpack -V %{SOURCE0}
-%setup -q -D -T -n %{name}-%{version}
+#To do: move to subdir?
+%setup -q -D -T -n .
+
+cp %{SOURCE0} .
 
 %build
+gem install -V \
+  --install-dir ./%{gem_dir} \
+  --local \
+  --bindir ./%{_bindir} \
+  --force \
+  --rdoc \
+  %{gem_name}-%{version}.gem
+
 
 %install
-mkdir -p %{buildroot}%{app_root}
-#mkdir -p %{buildroot}%{_initddir}
-mkdir -p %{buildroot}%{_bindir}
-mkdir -p %{buildroot}/etc/stat-monitor
 
-cp -r * %{buildroot}%{app_root}
-#mv %{buildroot}%{app_root}/support/fedora/%{name} %{buildroot}%{_initddir}
-ln -s %{app_root}/bin/stat-monitor-client %{buildroot}%{_bindir}
-mv %{buildroot}%{app_root}/config/* %{buildroot}/etc/stat-monitor
-find %{buildroot}%{app_root}/lib -type f | xargs chmod -x
-#chmod 0755 %{buildroot}%{_initddir}/%{name}
-chmod 0755 %{buildroot}%{app_root}/bin/stat-monitor-client
-rm -rf %{buildroot}%{app_root}/support
-rdoc --op %{buildroot}%{_defaultdocdir}/%{name}
+mkdir -p %{buildroot}%{gem_dir}
+cp -a ./%{gem_dir}/* %{buildroot}%{gem_dir}/
+
+mkdir -p %{buildroot}%{_bindir}
+cp -a ./%{_bindir}/* %{buildroot}%{_bindir}
+
+%check
+#To do: run tests.
+#rake
 
 %post
 # This adds the proper /etc/rc*.d links for the script
@@ -55,19 +64,19 @@ rdoc --op %{buildroot}%{_defaultdocdir}/%{name}
 
 %files
 #%{_initddir}/%{name}
-%{_bindir}/stat-monitor-client
-%dir %{app_root}/
-%{app_root}/bin
-%{app_root}/ext
-%{app_root}/lib
-/etc/stat-monitor
+#%{_bindir}/stat-monitor-client
+%dir %{gem_instdir}/
+%dir %{gem_instdir}/bin
+%dir %{gem_instdir}/ext
+%dir %{gem_instdir}/lib
+%dir /etc/stat-monitor
 #...
 
 %files doc
 %{_defaultdocdir}/%{name}
-%{app_root}/spec
-%{app_root}/%{name}.gemspec
-%{app_root}/Rakefile
+%{gem_instdir}/spec
+%{gem_instdir}/%{name}.gemspec
+%{gem_instdir}/Rakefile
 %{app_root}/Gemfile
 %{app_root}/LICENSE
 %{app_root}/README.md
