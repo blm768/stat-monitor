@@ -1,0 +1,9 @@
+%packager Ben Merritt
+%_topdir ~/rpmbuild
+%_tmppath %{_topdir}/tmp
+%_srcpath %{_topdir}/SOURCES
+%gem_dir /usr/share/rubygems
+%gem_instdir %{gem_dir}/gems/%{gem_name}%{version}.gem
+%gem_name statmonitor
+%gem_extdir %{_libdir}/gems/exts/%{gem_name}-%{version}
+
