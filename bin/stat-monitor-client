@@ -5,8 +5,6 @@
 #
 #Its configuration file is stored in /etc/stat-monitor/client.rc.
 
-$LOAD_PATH << '/usr/share/statmonitor/lib/' << '/usr/share/statmonitor/ext/'
-
 require 'rubygems'
 
 require 'statmonitor/client'
@@ -15,8 +13,7 @@ config = StatMonitor::Config.new('/etc/stat-monitor/client.rc')
 
 client = StatMonitor::Client.new(config)
 
-#To do: switch on existence of snapshot test mode?
-client.daemonize()
+client.daemonize() if config.root_dir == '/'
 
 client.run()
 

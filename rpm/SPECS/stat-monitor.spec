@@ -12,10 +12,12 @@ Source0: %{name}-%{version}.gem
 #...
 BuildRequires: rubygems
 #...
-BuildArch: noarch
 
 %global gem_dir /usr/share/rubygems/
-%global gem_instdir %{gem_dir}/gems/%{gem_name}%{version}/
+%global gem_instdir %{gem_dir}/gems/%{gem_name}-%{version}/
+%global gem_docdir %{gem_dir}/doc/%{gem_name}-%{version}/
+%global gem_cachefile %{gem_dir}/cache/%{gem_name}-%{version}.gem
+%global gem_specfile %{gem_dir}/specifications/%{gem_name}-%{version}.gemspec
 %global gem_name statmonitor
 %global gem_extdir %{_libdir}/gems/ext/%{gem_name}-%{version}/
 
@@ -54,6 +56,9 @@ cp -a ./%{gem_dir}/* %{buildroot}%{gem_dir}/
 mkdir -p %{buildroot}%{_bindir}
 cp -a ./%{_bindir}/* %{buildroot}%{_bindir}
 
+mkdir -p %{buildroot}/etc/stat-monitor
+cp -a ./%{gem_instdir}/config/* %{buildroot}/etc/stat-monitor
+
 %check
 #To do: run tests.
 #rake
@@ -64,23 +69,14 @@ cp -a ./%{_bindir}/* %{buildroot}%{_bindir}
 
 %files
 #%{_initddir}/%{name}
-#%{_bindir}/stat-monitor-client
-%dir %{gem_instdir}/
-%dir %{gem_instdir}/bin
-%dir %{gem_instdir}/ext
-%dir %{gem_instdir}/lib
-%dir /etc/stat-monitor
+%{_bindir}/stat-monitor-client
+%{gem_instdir}
+%{gem_docdir}
+%{gem_cachefile}
+%{gem_specfile}
+/etc/stat-monitor
 #...
 
-%files doc
-%{_defaultdocdir}/%{name}
-%{gem_instdir}/spec
-%{gem_instdir}/%{name}.gemspec
-%{gem_instdir}/Rakefile
-%{app_root}/Gemfile
-%{app_root}/LICENSE
-%{app_root}/README.md
-%{app_root}/snapshot
 
 
 %changelog
