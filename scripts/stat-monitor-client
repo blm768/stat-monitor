@@ -1,0 +1,53 @@
+#/bin/bash
+#
+# Stat monitor client startup script
+#
+
+PIDFILE=/var/run/stat-monitor-client.pid
+
+start() {
+  echo "Starting stat monitor client..."
+  #Is the client running?
+  if [ -f "$PIDFILE" ]; then
+    echo "Client is already running."
+    exit 1
+  fi
+
+  #Start the client.
+  stat-monitor-client
+}
+
+stop() {
+  echo -n "Stopping stat monitor client..."
+  echo
+  if [ -f $PIDFILE ]; then
+    PID=`cat "$PIDFILE"`
+    kill -s TERM $PID
+    rm $PIDFILE
+    echo "Stopped"
+  else
+    echo "Client is already stopped."
+  fi
+}
+
+case $1 in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  #To do: make more reliable?
+  force-start)
+    rm $PIDFILE
+    start
+    ;;
+  *)
+  echo "Usage: {start|stop|restart|force-start}"
+  ;;
+esac
+exit $?

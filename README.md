@@ -1,29 +1,11 @@
-# Stat::Monitor
+# StatMonitor
 
-TODO: Write a gem description
+A simple remote status monitor for computers on a network
 
 ## Installation
-
-Add this line to your application's Gemfile:
-
-    gem 'stat-monitor'
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install stat-monitor
+Run 'rake rpm' to build the RPM package, then install it.
 
 ## Usage
+For the client, just install and restart.
+The server is not implemented.
 
-TODO: Write usage instructions here
-
-## Contributing
-
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Added some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request

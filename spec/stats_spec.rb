@@ -6,7 +6,7 @@ describe StatMonitor::LocalStats do
   before(:all) do
     ENV['STATMONITOR_ROOT'] = File.join(Dir.pwd, 'snapshot/')
 
-    @CORRECT_HASH = {"Disks"=>{"/boot"=>9, "/"=>9}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0.0, 0.0, 0.0]}
+    @CORRECT_HASH = {"Disks"=>{"/boot"=>9, "/"=>9}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0, 0, 0]}
     @MESSAGE_TOO_SHORT_HASH = {'Status' => 1, 'Message' => 'Invalid message length'}
     @BAD_CHECKSUM_HASH  = {'Status' => 2, 'Message' => 'Invalid checksum'}
     @BAD_TIMESTAMP_HASH = {'Status' => 3, 'Message' => 'Timestamp does not match local time'}
@@ -27,7 +27,10 @@ describe StatMonitor::LocalStats do
 
     @client = StatMonitor::Client.new(@config)
 
-    #@remote_client = fork || exec("stat-monitor-client")
+    @remote_client = fork do
+      client = StatMonitor::Client.new(@config)
+      client.run()
+    end
     sleep(1)
   end
 
@@ -54,7 +57,7 @@ describe StatMonitor::LocalStats do
   end
 
   after(:all) do
-    #Process.kill('STOP', @remote_client)
+    Process.kill('STOP', @remote_client)
   end
 end
 

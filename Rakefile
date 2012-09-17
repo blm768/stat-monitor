@@ -18,7 +18,7 @@ RSpec::Core::RakeTask.new(:spec) do |task|
 end
 
 task :docs do
-  system('rdoc --exclude spec --exclude snapshot --exclude rpm')
+  system('rdoc --exclude spec --exclude snapshot --exclude rpm --exclude rpmbuild --exclude config')
 end
 
 task :rpm do

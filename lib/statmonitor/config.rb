@@ -11,6 +11,8 @@ module StatMonitor
   #  - The default value is 9445.
   #* "PublicKey": the file containing the public encryption key
   #  - The default value is "/etc/stat-monitor/public_key.pem".
+  #* "PIDFile": the file in which to write the PID
+  #  - The default is "/var/run/stat-monitor-client.pid".
   #
   #==Environment variables
   #The configuration values may be influenced by the following environment variables:
@@ -41,6 +43,8 @@ module StatMonitor
   	attr_reader :utmp_file
     #The file holding the public key for decrypting server commands
     attr_reader :public_key_file
+    #The location of the PID file
+    attr_reader :pid_file
 
     #Initialies the object using the given configuration file
 		def initialize(filename)
@@ -56,22 +60,28 @@ module StatMonitor
 	    end
 	    
 	    if config.include?'Timeout'
-	      @timeout = config['Timeout']
+	      @timeout = config['Timeout'].to_f
 	    else
 	      @timeout = 3
 	    end
 	    
 	    if config.include?'Port'
-	    	@port = config['Port']
+	    	@port = config['Port'].to_i
 	    else
 	    	@port = 9445
 	    end
 
 	    if config.include?'PublicKey'
-	    	@public_key_file = config['PublicKey']
+	    	@public_key_file = config['PublicKey'].to_s
 	    else
 	    	@public_key_file = '/etc/stat-monitor/public_key.pem'
 	    end
+
+      if config.include?'PIDFile'
+        @pid_file = config['PIDFile'].to_s
+      else
+        @pid_file = '/var/run/stat-monitor-client.pid'
+      end
 
       @root_dir = ENV['STATMONITOR_ROOT'] || '/'
       if @root_dir == '/'

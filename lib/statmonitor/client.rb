@@ -22,7 +22,7 @@ module StatMonitor
   #  * "SwapFree": the amount of free swap space as a percentage of total swap space
   #
   #* "Disks": a dictionary with disk names as the keys and floating-point numbers representing disk usage percentages as the values
-  #* "Load": an array of three floating-point numbers representing the 5-, 10-, and 15-minute load averages
+  #* "Load": an array of three numbers representing the 5-, 10-, and 15-minute load averages as percentages
   #* "Users": an array containing the name of each user that is currently logged in
   #* "Status": 0 indicates success; any other value represents a network or protocol error.
   #* "Message": Holds any error messages produced. If there is no error, the value is the string "OK".
@@ -76,8 +76,7 @@ module StatMonitor
       @stats = StatMonitor::LocalStats.new(config)
     end
 
-    #Daemonizes the current process. Duplicates the functionality of
-    #Process.daemonize() because it is not available in all Ruby versions.
+    #Daemonizes the current process and creates a PID file.
     def daemonize()
       exit if fork
       Process.setsid
@@ -86,6 +85,16 @@ module StatMonitor
       STDIN.reopen "/dev/null"
       STDOUT.reopen "/dev/null"
       STDERR.reopen "/dev/null"
+
+      #Write the PID file if possible.
+      #begin
+        pid_file = File.open(@config.pid_file, "w")
+        pid_file.puts(Process.pid.to_s)
+        pid_file.close
+      #rescue
+
+      #end
+
     end
 
     #Runs the client. This function is meant to be run after the client is
@@ -93,7 +102,7 @@ module StatMonitor
     def run()
       @socket = TCPServer.new(@config.port)
 
-      Signal.trap("STOP") do
+      Signal.trap("TERM") do
         exit unless @processing
         @running = false
       end

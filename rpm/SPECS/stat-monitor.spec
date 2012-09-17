@@ -59,6 +59,9 @@ cp -a ./%{_bindir}/* %{buildroot}%{_bindir}
 mkdir -p %{buildroot}/etc/stat-monitor
 cp -a ./%{gem_instdir}/config/* %{buildroot}/etc/stat-monitor
 
+mkdir -p %{buildroot}/etc/init.d/
+cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
+
 %check
 #To do: run tests.
 #rake
@@ -75,6 +78,7 @@ cp -a ./%{gem_instdir}/config/* %{buildroot}/etc/stat-monitor
 %{gem_cachefile}
 %{gem_specfile}
 /etc/stat-monitor
+/etc/init.d/stat-monitor-client/
 #...
 
 

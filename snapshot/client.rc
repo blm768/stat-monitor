@@ -1,0 +1,9 @@
+{
+  "MonitoredMounts": [
+    "/",
+    "/boot"
+  ],
+  "Timeout": 3,
+  "Port": 9445,
+  "PublicKey": "snapshot/public_key.pem"
+}

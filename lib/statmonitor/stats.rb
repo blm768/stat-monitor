@@ -38,7 +38,7 @@ module StatMonitor
     def load_stats()
       #To do: to ints?
       loadavg = File.open(@config.loadavg_file)
-      loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Float(str)}
+      loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Integer(Float(str) * 100)}
       loadavg.close
       loads
     end
