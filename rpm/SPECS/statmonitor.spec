@@ -71,8 +71,8 @@ cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
 #/sbin/chkconfig --add %{name}
 
 %files
-#%{_initddir}/%{name}
 %{_bindir}/stat-monitor-client
+%{_bindir}/get-client-stats
 %{gem_instdir}
 %{gem_docdir}
 %{gem_cachefile}

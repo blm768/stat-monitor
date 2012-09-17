@@ -100,26 +100,40 @@ module StatMonitor
     #Runs the client. This function is meant to be run after the client is
     #daemonized, so it enters an infinite loop and will not return.
     def run()
-      @socket = TCPServer.new(@config.port)
+      begin
+        @socket = TCPServer.new(@config.port)
 
-      Signal.trap("TERM") do
-        exit unless @processing
-        @running = false
-      end
-      
-      #Monitor incoming packets.
-      
-      while @running do
-        Thread.start(@socket.accept) do |client|
-          @processing = true
+        Signal.trap("TERM") do
+          exit unless @processing
+          @running = false
+        end
+        
+        #Monitor incoming packets.
+        
+        while @running do
+          Thread.start(@socket.accept) do |client|
+            @processing = true
 
-          message = readFirstLineWithTimeout(client)
+            message = readFirstLineWithTimeout(client)
 
-          client.puts(JSON.generate(process_message(message)))
-          
-          client.close
+            client.puts(JSON.generate(process_message(message)))
+            
+            client.close
 
-          @processing = false
+            @processing = false
+          end
+        end
+      rescue SystemExit
+        FileUtils.rm(config.pid_file) if File.exists? config.pid_file
+      rescue Exception => e
+        unless e.msg == 'exit'
+          File.open("/etc/stat-monitor/client.log", "w") do |log|
+            log.puts e.message
+            log.puts e.backtrace.inspect
+          end
+          #To do: make the Client class do this?
+          FileUtils.rm(config.pid_file) if File.exists? config.pid_file
+          exit 1
         end
       end
     end

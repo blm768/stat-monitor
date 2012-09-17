@@ -5,7 +5,7 @@
 #
 #Its configuration file is stored in /etc/stat-monitor/client.rc.
 
-require 'rubygems'
+require 'fileutils'
 
 require 'statmonitor/client'
 

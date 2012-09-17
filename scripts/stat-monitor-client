@@ -24,7 +24,6 @@ stop() {
     PID=`cat "$PIDFILE"`
     kill -s TERM $PID
     rm $PIDFILE
-    echo "Stopped"
   else
     echo "Client is already stopped."
   fi

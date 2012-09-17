@@ -50,7 +50,7 @@ task :rpm do
 
   Dir.chdir(File.join(home_dir, 'rpmbuild'))
 
-  system 'rpmbuild -ba SPECS/stat-monitor.spec'
+  system 'rpmbuild -ba SPECS/statmonitor.spec'
 
   Dir.chdir(rake_dir)
 

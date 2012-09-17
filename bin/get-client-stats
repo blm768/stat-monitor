@@ -1,0 +1,58 @@
+#!/usr/bin/ruby
+
+#This is just a simple script to grab stat info from a client.
+#
+#==Usage
+#get-client-stats address [port] [keyfile]
+
+require 'statmonitor'
+
+def create_message(private_key)
+  encrypted = private_key.private_encrypt(Time.new.to_i.to_s)
+  checksum = Digest::MD5.digest(encrypted)
+  Base64.encode64(checksum + encrypted).gsub(/\n/, "")
+end
+
+def read_first_line_with_timeout(client)
+  buf = ""
+  loop do
+    gotMessage = IO.select([client], nil, nil, 3)
+
+    return nil unless gotMessage
+    
+    #To do: check for EOFError? (probably shouldn't appear with select())
+    msg = client.readpartial(1024)
+    nlIndex = msg.index("\n")
+
+    if nlIndex then
+      return buf + msg[0 ... nlIndex]
+    else
+      buf += msg
+    end
+  end
+end
+
+def get_data(address, port, key)
+  TCPSocket.open(address, port) do |client|
+    client.puts(create_message(key))
+    read_first_line_with_timeout(client)
+  end
+end
+
+if ARGV.length < 1
+  puts "Usage:"
+  puts "    get-client-stats address [port] [keyfile]"
+  exit 1
+end
+
+address = ARGV[0]
+port = ARGV[1] || 9445
+keyfile = ARGV[2] || '/etc/stat-monitor/private_key.pem'
+
+private_key = OpenSSL::PKey::RSA.new(File.read(keyfile))
+
+json = get_data(address, port, private_key)
+
+puts json if json
+
+
