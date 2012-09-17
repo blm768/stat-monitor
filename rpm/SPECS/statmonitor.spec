@@ -77,8 +77,12 @@ cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
 %{gem_docdir}
 %{gem_cachefile}
 %{gem_specfile}
+/etc/init.d/stat-monitor-client
+
+%config
 /etc/stat-monitor
-/etc/init.d/stat-monitor-client/
+
+
 #...
 
 

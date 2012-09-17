@@ -126,15 +126,12 @@ module StatMonitor
       rescue SystemExit
         FileUtils.rm(config.pid_file) if File.exists? config.pid_file
       rescue Exception => e
-        unless e.msg == 'exit'
-          File.open("/etc/stat-monitor/client.log", "w") do |log|
-            log.puts e.message
-            log.puts e.backtrace.inspect
-          end
-          #To do: make the Client class do this?
-          FileUtils.rm(config.pid_file) if File.exists? config.pid_file
-          exit 1
+        File.open("/etc/stat-monitor/client.log", "w") do |log|
+          log.puts e.message
+          log.puts e.backtrace.inspect
         end
+        FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
+        exit 1
       end
     end
 
@@ -154,6 +151,7 @@ module StatMonitor
           localTime = Time.new.to_i
 
           if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
+            puts "Generating data"
             return @stats.get
           else
             #Invalid timestamp
@@ -178,7 +176,6 @@ module StatMonitor
 
         return nil unless gotMessage
         
-        #To do: check for EOFError? (probably shouldn't appear with select())
         msg = client.readpartial(1024)
         nlIndex = msg.index("\n")
 

@@ -18,6 +18,7 @@ VALUE UtmpModule;
 
 static VALUE module_function_users(VALUE self, VALUE filename) {
   StringValue(filename);
+  //DON'T FREE THIS! Ruby still uses it!
   char* cFilename = StringValueCStr(filename);
   VALUE users = rb_ary_new();
   FILE *file;
@@ -32,8 +33,6 @@ static VALUE module_function_users(VALUE self, VALUE filename) {
     strncpy(buf + strlen(buf), cFilename, 512 - 1 - strlen(buf));
     //Make sure the buffer ends with a null character.
     buf[511] = '\0';
-    //Free the filename string.
-    free(cFilename);
     rb_raise(rb_eIOError, buf);
   }
 
@@ -54,7 +53,6 @@ static VALUE module_function_users(VALUE self, VALUE filename) {
   }
   
   fclose(file);
-  free(cFilename);
 
   return users;
 }

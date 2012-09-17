@@ -36,7 +36,6 @@ module StatMonitor
 
     #Returns the 5-, 10-, and 15-minute load averages as an array of 3 floating-point values.
     def load_stats()
-      #To do: to ints?
       loadavg = File.open(@config.loadavg_file)
       loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Integer(Float(str) * 100)}
       loadavg.close
@@ -47,14 +46,13 @@ module StatMonitor
     def disk_usage()
       return {} if @config.monitored_mounts.empty?
       
-      #To do: error checking?
       disks = {}
 
-      #To do: add to unit tests?
       @config.monitored_mounts.each do |disk|
         disks[disk] = nil
       end
 
+      #To do: error checking?
       diskData = `#{@config.df_command}`
       
       diskData.each_line do |line|

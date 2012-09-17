@@ -13,6 +13,7 @@ def create_message(private_key)
   Base64.encode64(checksum + encrypted).gsub(/\n/, "")
 end
 
+#To do: make library function
 def read_first_line_with_timeout(client)
   buf = ""
   loop do
@@ -53,6 +54,43 @@ private_key = OpenSSL::PKey::RSA.new(File.read(keyfile))
 
 json = get_data(address, port, private_key)
 
-puts json if json
+unless json
+  puts "No response received."
+  exit
+end
 
+data = JSON.parse(json)
+
+unless data['Status'] == 0
+  puts "Received error from server: #{data['Message']}"
+  exit 1
+end
+
+print 'Processors: '
+puts data['Processors']
+
+puts 'Memory:'
+data['Memory'].each_pair do |key, value|
+  print "  #{key}: "
+  print value
+  print '%' if /Free/.match key
+  puts
+end
+
+puts 'Disks: '
+data['Disks'].each_pair do |key, value|
+  puts "  #{key}: #{value}%"
+end
+
+loads = data['Load']
+
+puts 'Load:'
+puts "  5-minute:  #{loads[0]}%"
+puts "  10-minute: #{loads[1]}%"
+puts "  15-minute: #{loads[2]}%"
+
+puts 'Users:'
+data['Users'].each do |user|
+  puts "  #{user}"
+end
 

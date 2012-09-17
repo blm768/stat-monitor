@@ -18,6 +18,8 @@ RSpec::Core::RakeTask.new(:spec) do |task|
 end
 
 task :docs do
+  #To do: figure out why rdoc needs this deleted to process all files.
+  FileUtils.rm_r('doc')
   system('rdoc --exclude spec --exclude snapshot --exclude rpm --exclude rpmbuild --exclude config')
 end
 
