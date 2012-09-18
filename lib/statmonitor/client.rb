@@ -69,7 +69,8 @@ module StatMonitor
       @processing = false
       @running = true
 
-      @publicKey = OpenSSL::PKey::RSA.new(File.read config.public_key_file)
+      @public_key = OpenSSL::PKey::RSA.new(File.read config.public_key_file)
+      @private_key = OpenSSL::PKey::RSA.new(File.read config.private_key_file)
 
       @socket = nil
 
@@ -78,13 +79,13 @@ module StatMonitor
 
     #Daemonizes the current process and creates a PID file.
     def daemonize()
-      exit if fork
-      Process.setsid
-      exit if fork
-      Dir.chdir "/"
-      STDIN.reopen "/dev/null"
-      STDOUT.reopen "/dev/null"
-      STDERR.reopen "/dev/null"
+      # exit if fork
+      # Process.setsid
+      # exit if fork
+      # Dir.chdir "/"
+      # STDIN.reopen "/dev/null"
+      # STDOUT.reopen "/dev/null"
+      # STDERR.reopen "/dev/null"
 
       #Write the PID file if possible.
       #begin
@@ -116,7 +117,12 @@ module StatMonitor
 
             message = readFirstLineWithTimeout(client)
 
-            client.puts(JSON.generate(process_message(message)))
+            response = JSON.generate(process_message(message))
+
+            #To do: figure out why encryption makes the code hang.
+            #response = Base64.encode(@private_key.private_encrypt(response))
+
+            client.puts(response)
             
             client.close
 
@@ -146,12 +152,11 @@ module StatMonitor
         actualChecksum = Digest::MD5.digest(message)
 
         if sentChecksum == actualChecksum
-          message = @publicKey.public_decrypt(message) 
+          message = @public_key.public_decrypt(message) 
           remoteTime = message.to_i
           localTime = Time.new.to_i
 
           if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
-            puts "Generating data"
             return @stats.get
           else
             #Invalid timestamp

@@ -41,8 +41,10 @@ module StatMonitor
   	attr_reader :loadavg_file
     #The file containing UTMP structures for all user processes
   	attr_reader :utmp_file
-    #The file holding the public key for decrypting server commands
+    #The file holding the public key for decrypting connection data
     attr_reader :public_key_file
+    #The file holding the private key for encrypting connection data
+    attr_reader :private_key_file
     #The location of the PID file
     attr_reader :pid_file
 
@@ -76,6 +78,12 @@ module StatMonitor
 	    else
 	    	@public_key_file = '/etc/stat-monitor/public_key.pem'
 	    end
+
+      if config.include?'PrivateKey'
+        @private_key_file = config['PrivateKey'].to_s
+      else
+        @private_key_file = '/etc/stat-monitor/private_key.pem'
+      end
 
       if config.include?'PIDFile'
         @pid_file = config['PIDFile'].to_s
