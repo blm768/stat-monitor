@@ -24,21 +24,27 @@ module StatMonitor
     def num_processors()
       num = 0
 
-      cpuData = File.open(@config.cpuinfo_file, "r") 
-      cpuData.each_line do |line|
-        line.chomp!
-        num += 1 if /^processor\s*:\s*\d$/ =~ line
+      begin
+        cpuData = File.open(@config.cpuinfo_file, "r") 
+        cpuData.each_line do |line|
+          line.chomp!
+          num += 1 if /^processor\s*:\s*\d$/ =~ line
+        end
+      ensure
+        cpuData.close unless cpuData.nil?
       end
-      
-      cpuData.close
       num
     end
 
     #Returns the 5-, 10-, and 15-minute load averages as an array of 3 floating-point values.
     def load_stats()
-      loadavg = File.open(@config.loadavg_file)
-      loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Integer(Float(str) * 100)}
-      loadavg.close
+      loads = {}
+      begin
+        loadavg = File.open(@config.loadavg_file)
+        loads = loadavg.readline.split(' ')[0 ... 3].map{|str| Integer(Float(str) * 100)}
+      ensure
+        loadavg.close unless loadavg.nil?
+      end
       loads
     end
     

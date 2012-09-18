@@ -51,8 +51,14 @@ module StatMonitor
     #Initialies the object using the given configuration file
 		def initialize(filename)
 			#To do: error checking
-      file = File.open(filename, "r")
-			config = JSON.parse(file.read)
+      file = nil
+      config = nil
+      begin
+        file = File.open(filename, "r")
+  			config = JSON.parse(file.read)
+      ensure
+        file.close unless file.nil?
+      end
 
 	    #To do: make sure all loaded data are the correct type?
 	    if config.include?'MonitoredMounts'

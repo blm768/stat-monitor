@@ -79,22 +79,21 @@ module StatMonitor
 
     #Daemonizes the current process and creates a PID file.
     def daemonize()
-      # exit if fork
-      # Process.setsid
-      # exit if fork
-      # Dir.chdir "/"
-      # STDIN.reopen "/dev/null"
-      # STDOUT.reopen "/dev/null"
-      # STDERR.reopen "/dev/null"
+      exit if fork
+      Process.setsid
+      exit if fork
+      Dir.chdir "/"
+      STDIN.reopen "/dev/null"
+      STDOUT.reopen "/dev/null"
+      STDERR.reopen "/dev/null"
 
       #Write the PID file if possible.
-      #begin
+      begin
         pid_file = File.open(@config.pid_file, "w")
         pid_file.puts(Process.pid.to_s)
-        pid_file.close
-      #rescue
-
-      #end
+      ensure
+        pid_file.close unless pid_file.nil?
+      end
 
     end
 
@@ -136,8 +135,10 @@ module StatMonitor
           log.puts e.message
           log.puts e.backtrace.inspect
         end
-        FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         exit 1
+      ensure
+        FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
+        @socket.close
       end
     end
 

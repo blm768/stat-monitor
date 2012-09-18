@@ -23,7 +23,10 @@ stop() {
   if [ -f $PIDFILE ]; then
     PID=`cat "$PIDFILE"`
     kill -s TERM $PID
-    rm $PIDFILE
+    #Does the PID file still exist?
+    if [ -f $PIDFILE ]; then
+      rm $PIDFILE
+    fi
   else
     echo "Client is already stopped."
   fi
