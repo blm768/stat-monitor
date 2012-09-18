@@ -186,9 +186,9 @@ module StatMonitor
         nlIndex = msg.index("\n")
 
         if nlIndex then
-          return buf + msg[0 ... nlIndex]
+          return buf << msg[0 ... nlIndex]
         else
-          buf += msg
+          buf << msg
         end
       end
     end

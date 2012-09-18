@@ -23,6 +23,8 @@ stop() {
   if [ -f $PIDFILE ]; then
     PID=`cat "$PIDFILE"`
     kill -s TERM $PID
+    #Give the process a chance to clean up.
+    sleep 0.1
     #Does the PID file still exist?
     if [ -f $PIDFILE ]; then
       rm $PIDFILE
