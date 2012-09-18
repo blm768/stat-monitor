@@ -66,8 +66,9 @@ module StatMonitor
     def initialize(config)
       @config = config
 
-      @processing = false
+      @connections = 0
       @running = true
+      @mutex = Mutex.new
 
       @public_key = OpenSSL::PKey::RSA.new(File.read config.public_key_file)
       @private_key = OpenSSL::PKey::RSA.new(File.read config.private_key_file)
@@ -104,7 +105,7 @@ module StatMonitor
         @socket = TCPServer.new(@config.port)
 
         Signal.trap("TERM") do
-          exit unless @processing
+          exit if @connections == 0
           @running = false
         end
         
@@ -112,7 +113,7 @@ module StatMonitor
         
         while @running do
           Thread.start(@socket.accept) do |client|
-            @processing = true
+            @mutex.synchronize{@connections += 1}
 
             message = readFirstLineWithTimeout(client)
 
@@ -125,7 +126,7 @@ module StatMonitor
             
             client.close
 
-            @processing = false
+            @mutex.synchronize{@connections -= 1}
           end
         end
       rescue SystemExit
