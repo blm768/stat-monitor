@@ -9,11 +9,30 @@ require 'fileutils'
 
 require 'statmonitor/client'
 
-config = StatMonitor::Config.new('/etc/stat-monitor/client.rc')
+config = nil
 
-client = StatMonitor::Client.new(config)
+begin
+  config = StatMonitor::Config.new('/etc/stat-monitor/client.rc')
 
-client.daemonize() if config.root_dir == '/'
+  client = StatMonitor::Client.new(config)
 
-client.run()
+  client.daemonize() if config.root_dir == '/'
 
+  client.run()
+rescue => e
+  #Try to write to the log.
+  begin
+    File.open(config.log_file, "w") do |log|
+      log.puts e.message
+      log.puts e.backtrace.inspect
+    end
+  rescue => e2
+    #If we can't write to the log, at least try to write to standard output.
+    puts e.message
+    puts e.backtrace.inspect
+    puts '-------------------'
+    puts "Unable to write to log file:"
+    puts e2.message
+    puts e2.backtrace.inspect
+  end
+end

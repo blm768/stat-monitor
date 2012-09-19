@@ -59,7 +59,8 @@ module StatMonitor
   #* If the server's message was too short, "Status" = 1, and "Message" = "Invalid message length".
   #* If the checksum is not valid, "Status" = 2, and "Message" = "Invalid checksum".
   #* If the timestamp provided in the message is not within 15 minutes of the client's time, "Status" = 3, and "Message" = "Timestamp does not match local time".
-  #
+  #* If the public key file is missing or invalid, "Status" = 4, and "Message" = "Invalid key provided; unable to decrypt message"
+  #* If the private key file is missing or invalid, "Status" = 5, and "Message" = "Invalid key provided; unable to encrypt message"
   class Client
     #Creates the client with a given configuration object.
     #For details on the configuration object, see the docs for StatMonitor::Config.
@@ -70,7 +71,6 @@ module StatMonitor
       @running = true
       @mutex = Mutex.new
 
-      @public_key = OpenSSL::PKey::RSA.new(File.read config.public_key_file)
       @private_key = OpenSSL::PKey::RSA.new(File.read config.private_key_file)
 
       @socket = nil
@@ -129,14 +129,6 @@ module StatMonitor
             @mutex.synchronize{@connections -= 1}
           end
         end
-      rescue SystemExit
-        FileUtils.rm(config.pid_file) if File.exists? config.pid_file
-      rescue Exception => e
-        File.open("/etc/stat-monitor/client.log", "w") do |log|
-          log.puts e.message
-          log.puts e.backtrace.inspect
-        end
-        exit 1
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         @socket.close
@@ -154,7 +146,12 @@ module StatMonitor
         actualChecksum = Digest::MD5.digest(message)
 
         if sentChecksum == actualChecksum
-          message = @public_key.public_decrypt(message) 
+          #Is there a public key?
+          unless @config.public_key
+            return {'Status' => 4, 'Message' => 'Invalid key provided; unable to decrypt message'}
+          end
+
+          message = @config.public_key.public_decrypt(message) 
           remoteTime = message.to_i
           localTime = Time.new.to_i
 
