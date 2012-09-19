@@ -6,20 +6,46 @@
 #Its configuration file is stored in /etc/stat-monitor/client.rc.
 
 require 'fileutils'
+require 'openssl'
+require 'optparse'
 
 require 'statmonitor/client'
 
 config = nil
 
+isRunningAsDaemon = false
+
 begin
+
   config = StatMonitor::Config.new('/etc/stat-monitor/client.rc')
 
+  OptionParser.new do |opts|
+    opts.banner = "Usage: stat-monitor-client [options]"
+
+    opts.on("-g", "--generate-keys", "Generate encryption keys", :OPTIONAL) do
+      puts "Generating keys..."
+      private_key = OpenSSL::PKey::RSA.new(1024)
+      File.open(config.private_key_file, "w") do |file|
+        file.write(private_key)
+      end
+      #File.write(config.public_key_file, private_key.public_key)
+      exit
+    end
+  end.parse!
+
+  isRunningAsDaemon = true
   client = StatMonitor::Client.new(config)
 
-  client.daemonize() if config.root_dir == '/'
+  #client.daemonize() if config.root_dir == '/'
 
   client.run()
 rescue => e
+  #If we aren't actually daemonizing, just pass the message on.
+  raise e unless isRunningAsDaemon
+
+  #Send the message to standard output in case anyone's looking.
+  puts e.message
+  puts e.backtrace.inspect
   #Try to write to the log.
   begin
     File.open(config.log_file, "w") do |log|
@@ -27,9 +53,7 @@ rescue => e
       log.puts e.backtrace.inspect
     end
   rescue => e2
-    #If we can't write to the log, at least try to write to standard output.
-    puts e.message
-    puts e.backtrace.inspect
+    #If we can't write to the log, try to reach the user through standard output.
     puts '-------------------'
     puts "Unable to write to log file:"
     puts e2.message

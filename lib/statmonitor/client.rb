@@ -50,7 +50,8 @@ module StatMonitor
   #* Parse the message as an integer
   #* Compare the timestamp in the message to the current system time
   #* Ensure that the timestamp is within 15 minutes of the client's local time
-  #* Send the JSON data to the client as a single line terminated with a newline character
+  #* Obtain the JSON response, encrypt it with the private key, encode it in Base64, and send it with a terminating newline.
+  #  - If no valid private key exists, the JSON data will be sent as plain text but will only consist of an error message.
   #* Close the connection to the client
   #
   #===Error messages
@@ -70,8 +71,6 @@ module StatMonitor
       @connections = 0
       @running = true
       @mutex = Mutex.new
-
-      @private_key = OpenSSL::PKey::RSA.new(File.read config.private_key_file)
 
       @socket = nil
 
@@ -101,8 +100,10 @@ module StatMonitor
     #Runs the client. This function is meant to be run after the client is
     #daemonized, so it enters an infinite loop and will not return.
     def run()
+      server = nil
+
       begin
-        @socket = TCPServer.new(@config.port)
+        server = TCPServer.new(@config.port)
 
         Signal.trap("TERM") do
           exit if @connections == 0
@@ -112,26 +113,34 @@ module StatMonitor
         #Monitor incoming packets.
         
         while @running do
-          Thread.start(@socket.accept) do |client|
+          Thread.start(server.accept) do |client|
             @mutex.synchronize{@connections += 1}
 
-            message = readFirstLineWithTimeout(client)
+            wrapper = EOTSocketWrapper.new(client)
+
+            message = wrapper.read_until_eot(@config.timeout)
+            puts message
 
             response = JSON.generate(process_message(message))
 
             #To do: figure out why encryption makes the code hang.
             #response = Base64.encode(@private_key.private_encrypt(response))
 
-            client.puts(response)
+            puts(response)
+            client.write(response)
+            #Write EOT
+            client.write("\004")
             
             client.close
 
             @mutex.synchronize{@connections -= 1}
           end
         end
+      rescue => e
+        raise e
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
-        @socket.close
+        server.close if server
       end
     end
 
@@ -156,6 +165,7 @@ module StatMonitor
           localTime = Time.new.to_i
 
           if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
+            #Is there a private key?
             return @stats.get
           else
             #Invalid timestamp
@@ -170,28 +180,5 @@ module StatMonitor
         return {'Status' => 1, 'Message' => 'Invalid message length'}
       end
     end
-
-    #Reads the first line sent over the socket, potentially discarding data sent afterward. If the connection times out
-    #before the newline is read, returns nil
-    def readFirstLineWithTimeout(client)
-      buf = ""
-      loop do
-        gotMessage = IO.select([client], nil, nil, @config.timeout)
-
-        return nil unless gotMessage
-        
-        msg = client.readpartial(1024)
-        nlIndex = msg.index("\n")
-
-        if nlIndex then
-          return buf << msg[0 ... nlIndex]
-        else
-          buf << msg
-        end
-      end
-    end
-
-    private :readFirstLineWithTimeout
-
   end
 end

@@ -70,7 +70,7 @@ module StatMonitor
         file.close unless file.nil?
       end
 
-      #This must be done first so future errors can go to the log.
+      #This should be done first so future errors can go to the log.
       if config.include?'LogFile'
         @log_file = config['LogFile'].to_s
       else
@@ -137,7 +137,6 @@ module StatMonitor
       @cpuinfo_file = File.join(@root_dir, 'proc/cpuinfo')
       @loadavg_file = File.join(@root_dir, 'proc/loadavg')
       @utmp_file = File.join(@root_dir, 'var/run/utmp')
-
 		end
 	end
 end

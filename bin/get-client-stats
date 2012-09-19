@@ -13,30 +13,13 @@ def create_message(private_key)
   Base64.encode64(checksum + encrypted).gsub(/\n/, "")
 end
 
-#To do: make library function
-def read_first_line_with_timeout(client)
-  buf = ""
-  loop do
-    gotMessage = IO.select([client], nil, nil, 3)
-
-    return nil unless gotMessage
-    
-    #To do: check for EOFError? (probably shouldn't appear with select())
-    msg = client.readpartial(1024)
-    nlIndex = msg.index("\n")
-
-    if nlIndex then
-      return buf << msg[0 ... nlIndex]
-    else
-      buf << msg
-    end
-  end
-end
-
 def get_data(address, port, key)
   TCPSocket.open(address, port) do |client|
-    client.puts(create_message(key))
-    read_first_line_with_timeout(client)
+    client.write(create_message(key))
+    #Write EOT.
+    client.write("\004")
+    wrapper = StatMonitor::EOTSocketWrapper.new(client)
+    return wrapper.read_until_eot(3)
   end
 end
 
