@@ -35,12 +35,11 @@ module StatMonitor
   #it performs the following steps:
   #
   #* Retrieve the current system time as seconds from the Unix epoch in GMT
-  #* Convert the integer representing the time to a string and encrypt it with the RSA key specified in the configuration file
+  #* Convert the integer representing the time to a string and encrypt it using AES-128-CBC
   #* Calculate the MD5 checksum of the encrypted data in raw binary format (using Digest:MD5.digest() instead of hexdigest())
   #* Concatenate the checksum and the encrypted data, then encode them in base64 format
-  #* Remove any newline characters in the encoded string
   #* Initiate a TCP connection with the client
-  #* Send the encoded time to the client, followed by a newline character
+  #* Send the encoded time to the client, followed by an EOT character
   #
   #When the connection is made, the client will:
   #
@@ -50,8 +49,7 @@ module StatMonitor
   #* Parse the message as an integer
   #* Compare the timestamp in the message to the current system time
   #* Ensure that the timestamp is within 15 minutes of the client's local time
-  #* Obtain the JSON response, encrypt it with the private key, encode it in Base64, and send it with a terminating newline.
-  #  - If no valid private key exists, the JSON data will be sent as plain text but will only consist of an error message.
+  #* Generate the JSON structure, encrypt it with AES-128-CBC, convert it to Base64 format, and send it to the server with an EOT terminator
   #* Close the connection to the client
   #
   #===Error messages
@@ -100,6 +98,7 @@ module StatMonitor
     #Runs the client. This function is meant to be run after the client is
     #daemonized, so it enters an infinite loop and will not return.
     def run()
+      #To do: figure out what is swallowing exceptions.
       server = nil
 
       begin
@@ -118,26 +117,33 @@ module StatMonitor
 
             wrapper = EOTSocketWrapper.new(client)
 
-            message = wrapper.read_until_eot(@config.timeout)
-            puts message
+            #Is there a key?
+            if @config.key
+              message = wrapper.read_until_eot(@config.timeout)
 
-            response = JSON.generate(process_message(message))
+              response = JSON.generate(process_message(message))
 
-            #To do: figure out why encryption makes the code hang.
-            #response = Base64.encode(@private_key.private_encrypt(response))
+              begin
+                response = Base64.encode64(aes_128_encrypt(response, @config.key)).gsub(/\n/, "")
+              rescue => e
+                puts e.message
+                raise e
+              end
 
-            puts(response)
-            client.write(response)
-            #Write EOT
-            client.write("\004")
+              puts(response)
+
+              client.write(response)
+              #Write EOT
+              client.write("\004")
+            else
+              wrapper.send("Error")
+            end
             
             client.close
 
             @mutex.synchronize{@connections -= 1}
           end
         end
-      rescue => e
-        raise e
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         server.close if server
@@ -155,17 +161,11 @@ module StatMonitor
         actualChecksum = Digest::MD5.digest(message)
 
         if sentChecksum == actualChecksum
-          #Is there a public key?
-          unless @config.public_key
-            return {'Status' => 4, 'Message' => 'Invalid key provided; unable to decrypt message'}
-          end
-
-          message = @config.public_key.public_decrypt(message) 
+          message = aes_128_decrypt(message, @config.key) 
           remoteTime = message.to_i
           localTime = Time.new.to_i
 
           if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
-            #Is there a private key?
             return @stats.get
           else
             #Invalid timestamp

@@ -9,10 +9,8 @@ module StatMonitor
   #  - The default value is 3 seconds.
   #* "Port": the port used for client/server communication
   #  - The default value is 9445.
-  #* "PublicKey": the file containing the public encryption key
-  #  - The default value is "/etc/stat-monitor/public_key.pem".
-  #* "PrivateKey": the file containing the private encryption key
-  #  - The default value is "/etc/stat-monitor/private_key.pem".
+  #* "Key": the file containing the 128-bit AES encryption key for network transmissions
+  #  - The default value is "/etc/stat-monitor/aes128.key".
   #* "PIDFile": the file in which to write the PID
   #  - The default is "/var/run/stat-monitor-client.pid".
   #* "LogFile": the file in which to log errors
@@ -45,14 +43,10 @@ module StatMonitor
   	attr_reader :loadavg_file
     #The file containing UTMP structures for all user processes
   	attr_reader :utmp_file
-    #The file holding the public key for decrypting connection data
-    attr_reader :public_key_file
-    #The public key
-    attr_reader :public_key
-    #The file holding the private key for encrypting connection data
-    attr_reader :private_key_file
-    #The private key
-    attr_reader :private_key
+    #The file containing the encryption key
+    attr_reader :key_file
+    #The encryption key
+    attr_reader :key
     #The location of the PID file
     attr_reader :pid_file
     #The location of the log file
@@ -96,27 +90,12 @@ module StatMonitor
 	    	@port = 9445
 	    end
 
-	    if config.include?'PublicKey'
-	    	@public_key_file = config['PublicKey'].to_s
-	    else
-	    	@public_key_file = '/etc/stat-monitor/public_key.pem'
-	    end
- 
-      if @public_key_file && File.file?(@public_key_file)
-        File.open(@public_key_file, "r") do |file|
-          @public_key = OpenSSL::PKey::RSA.new(file.read)
-        end
-      end
+      @key_file = config['Key'] || '/etc/stat-monitor/aes128.key'
 
-      if config.include?'PrivateKey'
-        @private_key_file = config['PrivateKey'].to_s
-      else
-        @private_key_file = '/etc/stat-monitor/private_key.pem'
-      end
-
-      if @private_key_file && File.file?(@private_key_file)
-        File.open(@private_key_file, "r") do |file|
-          @public_key = OpenSSL::PKey::RSA.new(file.read)
+      if File.file? @key_file
+        File.open(@key_file) do |file|
+	       @key = file.read.chomp!.split("")
+         @key = nil unless @key.length == 128
         end
       end
 

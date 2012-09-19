@@ -24,11 +24,12 @@ begin
 
     opts.on("-g", "--generate-keys", "Generate encryption keys", :OPTIONAL) do
       puts "Generating keys..."
+      puts config.key_file
+      cipher = OpenSSL::Cipher::Cipher.new('AES-128-CBC')
       private_key = OpenSSL::PKey::RSA.new(1024)
-      File.open(config.private_key_file, "w") do |file|
-        file.write(private_key)
+      File.open(config.key_file, "w") do |file|
+        file.write(cipher.random_key)
       end
-      #File.write(config.public_key_file, private_key.public_key)
       exit
     end
   end.parse!
