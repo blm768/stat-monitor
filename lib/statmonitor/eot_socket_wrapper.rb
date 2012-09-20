@@ -51,7 +51,7 @@ module StatMonitor
   #Sends the message followed by an EOT
   #
   #The message must not contain any EOT characters.
-  def send(message)
+  def send_message(message)
     @socket.write(message)
     @socket.write("\004")
   end

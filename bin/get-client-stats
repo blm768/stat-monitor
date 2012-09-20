@@ -7,18 +7,16 @@
 
 require 'statmonitor'
 
-def create_message(private_key)
-  encrypted = private_key.private_encrypt(Time.new.to_i.to_s)
+def create_message(key)
+  encrypted = StatMonitor::aes_128_cbc_encrypt(Time.new.to_i.to_s, key)
   checksum = Digest::MD5.digest(encrypted)
   Base64.encode64(checksum + encrypted).gsub(/\n/, "")
 end
 
 def get_data(address, port, key)
   TCPSocket.open(address, port) do |client|
-    client.write(create_message(key))
-    #Write EOT.
-    client.write("\004")
     wrapper = StatMonitor::EOTSocketWrapper.new(client)
+    wrapper.send_message(create_message(key))
     return wrapper.read_until_eot(3)
   end
 end
@@ -31,11 +29,11 @@ end
 
 address = ARGV[0]
 port = ARGV[1] || 9445
-keyfile = ARGV[2] || '/etc/stat-monitor/private_key.pem'
+keyfile = ARGV[2] || '/etc/stat-monitor/aes128.key'
 
-private_key = OpenSSL::PKey::RSA.new(File.read(keyfile))
+key = File.read(keyfile)
 
-json = get_data(address, port, private_key)
+json = get_data(address, port, key)
 
 unless json
   puts "No response received."

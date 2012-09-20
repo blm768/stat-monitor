@@ -94,8 +94,9 @@ module StatMonitor
 
       if File.file? @key_file
         File.open(@key_file) do |file|
-	       @key = file.read.chomp!.split("")
-         @key = nil unless @key.length == 128
+	       @key = file.read[0 .. 15]
+         #.chomp!.split("")
+         @key = nil unless @key.length == 16
         end
       end
 

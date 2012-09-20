@@ -61,6 +61,9 @@ module StatMonitor
   #* If the public key file is missing or invalid, "Status" = 4, and "Message" = "Invalid key provided; unable to decrypt message"
   #* If the private key file is missing or invalid, "Status" = 5, and "Message" = "Invalid key provided; unable to encrypt message"
   class Client
+    #The message returned if the command message has an invalid length
+    INVALID_LENGTH_MESSAGE = {'Status' => 1, 'Message' => 'Invalid message length'}
+
     #Creates the client with a given configuration object.
     #For details on the configuration object, see the docs for StatMonitor::Config.
     def initialize(config)
@@ -98,7 +101,6 @@ module StatMonitor
     #Runs the client. This function is meant to be run after the client is
     #daemonized, so it enters an infinite loop and will not return.
     def run()
-      #To do: figure out what is swallowing exceptions.
       server = nil
 
       begin
@@ -119,30 +121,22 @@ module StatMonitor
 
             #Is there a key?
             if @config.key
-              message = wrapper.read_until_eot(@config.timeout)
+              response = wrapper.read_until_eot(@config.timeout)
 
-              response = JSON.generate(process_message(message))
+              response = JSON.generate(process_message(response))
 
-              begin
-                response = Base64.encode64(aes_128_encrypt(response, @config.key)).gsub(/\n/, "")
-              rescue => e
-                puts e.message
-                raise e
-              end
+              response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key)).gsub(/\n/, "")
 
-              puts(response)
-
-              client.write(response)
-              #Write EOT
-              client.write("\004")
+              #This may throw an error if the connection closes; just swallow the error.
+              wrapper.send_message(response) rescue IOError
             else
-              wrapper.send("Error")
+              wrapper.send_message("Error") rescue IOError
             end
             
             client.close
 
             @mutex.synchronize{@connections -= 1}
-          end
+          end.abort_on_exception = true
         end
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
@@ -153,15 +147,21 @@ module StatMonitor
     #Processes a network message, including checksum verification, decryption, etc.
     #Probably only useful for unit tests or when called by the run() method.
     def process_message(message)
-      #Is there a long enough message?
-      if message && message.length > 16 then
+      #Is there a message?
+      if message then
         message = Base64.decode64(message)
+        puts message.length
+        #Is the result long enough? Is it properly padded?
+        if message.length < (16 + 32) || message.length % 16 != 0
+          return INVALID_LENGTH_MESSAGE
+        end
+
         sentChecksum = message[0 .. 15]
         message = message[16 .. -1]
         actualChecksum = Digest::MD5.digest(message)
 
         if sentChecksum == actualChecksum
-          message = aes_128_decrypt(message, @config.key) 
+          message = StatMonitor::aes_128_cbc_decrypt(message, @config.key) 
           remoteTime = message.to_i
           localTime = Time.new.to_i
 
@@ -177,7 +177,7 @@ module StatMonitor
         end
       else
         #Message was too short
-        return {'Status' => 1, 'Message' => 'Invalid message length'}
+        return INVALID_LENGTH_MESSAGE
       end
     end
   end
