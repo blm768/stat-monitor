@@ -64,6 +64,7 @@ cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
 
 #Create ghost files.
 echo /dev/null > %{buildroot}/etc/stat-monitor/aes128.key
+echo /dev/null > %{buildroot}/etc/stat-monitor/client.log
 mkdir -p %{buildroot}/var/run
 echo /dev/null > %{buildroot}/var/run/stat-monitor-client.pid
 
@@ -88,6 +89,7 @@ echo /dev/null > %{buildroot}/var/run/stat-monitor-client.pid
 /etc/stat-monitor/client.rc
 
 %ghost /etc/stat-monitor/aes128.key
+%ghost /etc/stat-monitor/client.log
 %ghost /var/run/stat-monitor-client.pid
 
 

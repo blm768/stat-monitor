@@ -18,6 +18,8 @@ module StatMonitor
   #  - The default is "/var/run/stat-monitor-client.pid".
   #* "LogFile": the file in which to log errors
   #  - The default is "/etc/stat-monitor/client.log"
+  #* "Debug": a boolean value specifying whether to log debug messages
+  #  - The default value is false
   #
   #==Environment variables
   #The configuration values may be influenced by the following environment variables:
@@ -121,8 +123,6 @@ module StatMonitor
          @key = nil unless @key.length == 16
         end
       end
-
-      @key = nil
 
       if config.include?'PIDFile'
         @pid_file = config['PIDFile'].to_s

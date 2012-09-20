@@ -58,7 +58,6 @@ module StatMonitor
         disks[disk] = nil
       end
 
-      #To do: error checking?
       diskData = `#{@config.df_command}`
       
       diskData.each_line do |line|
@@ -132,13 +131,13 @@ module StatMonitor
     #Returns a hash containing all statistics.
     #The format mirrors that of the client's JSON response; see StatMonitor::Client for more details.
     def get()
-        {'Processors' => num_processors,
-          'Memory' => mem_stats,
-          'Load' => load_stats,
-          'Disks' => disk_usage, 
-          'Users' => Set.new(StatMonitor::Utmp::users(@config.utmp_file)).to_a,
-          'Status' => 0,
-          'Message' => 'OK'}
+      {'Processors' => num_processors,
+        'Memory' => mem_stats,
+        'Load' => load_stats,
+        'Disks' => disk_usage, 
+        'Users' => Set.new(StatMonitor::Utmp::users(@config.utmp_file)).to_a,
+        'Status' => 0,
+        'Message' => 'OK'}
     end
 
   end

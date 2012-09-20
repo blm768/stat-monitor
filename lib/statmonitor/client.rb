@@ -67,6 +67,7 @@ module StatMonitor
   #* If the server's message was too short, status = 2, and "Message" = "Invalid message length".
   #* If the checksum is not valid, status = 3, and "Message" = "Invalid checksum".
   #* If the timestamp provided in the message is not within 15 minutes of the client's time, status = 4, and "Message" = "Timestamp does not match local time".
+  #* If there is an error while obtaining the JSON data, status = 5, and "Message" = "Error while obtaining statistics"
   class Client
     #The message returned if the command message has an invalid length
     INVALID_LENGTH_MESSAGE = {'Status' => 2, 'Message' => 'Invalid message length'}
@@ -117,36 +118,68 @@ module StatMonitor
           exit if @connections == 0
           @running = false
         end
+
+        @config.log.debug("Started client")
         
         #Monitor incoming packets.
         
         while @running do
           Thread.start(server.accept) do |client|
-            @mutex.synchronize{@connections += 1}
+            begin
+              @mutex.synchronize{@connections += 1}
 
-            wrapper = EOTSocketWrapper.new(client)
+              @mutex.synchronize do
+                @config.log.debug("Connection accepted from " << client.addr[3])
+              end
 
-            #Is there a key?
-            if @config.key
-              message = wrapper.read_until_eot(@config.timeout)
+              wrapper = EOTSocketWrapper.new(client)
 
-              data = process_message(message)
+              #Is there a key?
+              if @config.key
+                message = wrapper.read_until_eot(@config.timeout)
 
-              response = JSON.generate(data)
+                data_exception = nil
+                begin
+                  data = process_message(message)
+                rescue => e
+                  data = {'Status' => 5, 'Message' => 'Error while obtaining statistics'}
+                  data_exception = e
+                end
 
-              response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key)).gsub(/\n/, "")
+                response = JSON.generate(data)
 
-              #This may throw an error if the connection closes; just swallow the error.
-              wrapper.send_message(data['Status'])
-              wrapper.send_message(response) rescue IOError
-            else
-              wrapper.send_message("1") rescue IOError
+                response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key)).gsub(/\n/, "")
+
+                status = data['Status']
+
+                #This may throw an error if the connection closes.
+                wrapper.send_message(status.to_s)
+                wrapper.send_message(response)
+
+                if data_exception
+                  raise data_exception
+                end
+
+                if status != 0
+                  @mutex.synchronize do
+                    @config.syslog.err(e.msg)
+                    @config.log.error(e.msg << e.backtrace.inspect)
+                  end
+                end
+              else
+                wrapper.send_message("1")
+                raise 'No valid encryption key present'
+              end
+            rescue => e
+              @mutex.synchronize do
+                @config.syslog.err(e.message)
+                @config.log.error(e.message << e.backtrace.join("\n"))
+              end
+            ensure
+              client.close if client.open?
+              @mutex.synchronize{@connections -= 1}
             end
-            
-            client.close
-
-            @mutex.synchronize{@connections -= 1}
-          end.abort_on_exception = true
+          end
         end
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
