@@ -57,19 +57,19 @@ module StatMonitor
   #* Generate the JSON structure
   #* Send the value of the "Status" field as a plaintext decimal integer with an EOT terminator
   #* Encrypt the JSON structure, convert it to Base64 format, and send it to the server with an EOT terminator
+  #  - If it is not possible to encrypt the data, the status message is "1", and the JSON message is not sent.
   #* Close the connection to the client
   #
   #===Error messages
-  #If there is a protocol- or network-related error on the client side, only the "Status" and "Message" fields will be
-  #present in the JSON message. Their values are defined as follows:
-  #* If the server's message was too short, "Status" = 1, and "Message" = "Invalid message length".
-  #* If the checksum is not valid, "Status" = 2, and "Message" = "Invalid checksum".
-  #* If the timestamp provided in the message is not within 15 minutes of the client's time, "Status" = 3, and "Message" = "Timestamp does not match local time".
-  #* If the public key file is missing or invalid, "Status" = 4, and "Message" = "Invalid key provided; unable to decrypt message"
-  #* If the private key file is missing or invalid, "Status" = 5, and "Message" = "Invalid key provided; unable to encrypt message"
+  #If there is a protocol- or network-related error on the client side, the status message will be nonzero.
+  #The values of the status codes and the "Message" field are defined as follows:
+  #* If the public key file is missing or invalid, status = 1. The JSON structure will not be sent.
+  #* If the server's message was too short, status = 2, and "Message" = "Invalid message length".
+  #* If the checksum is not valid, status = 3, and "Message" = "Invalid checksum".
+  #* If the timestamp provided in the message is not within 15 minutes of the client's time, status = 4, and "Message" = "Timestamp does not match local time".
   class Client
     #The message returned if the command message has an invalid length
-    INVALID_LENGTH_MESSAGE = {'Status' => 1, 'Message' => 'Invalid message length'}
+    INVALID_LENGTH_MESSAGE = {'Status' => 2, 'Message' => 'Invalid message length'}
 
     #Creates the client with a given configuration object.
     #For details on the configuration object, see the docs for StatMonitor::Config.
@@ -140,7 +140,7 @@ module StatMonitor
               wrapper.send_message(data['Status'])
               wrapper.send_message(response) rescue IOError
             else
-              wrapper.send_message("Error") rescue IOError
+              wrapper.send_message("1") rescue IOError
             end
             
             client.close
@@ -178,11 +178,11 @@ module StatMonitor
             return @stats.get
           else
             #Invalid timestamp
-            return {'Status' => 3, 'Message' => 'Timestamp does not match local time'}
+            return {'Status' => 4, 'Message' => 'Timestamp does not match local time'}
           end
         else
           #Invalid checksum
-          return {'Status' => 2, 'Message' => 'Invalid checksum'}
+          return {'Status' => 3, 'Message' => 'Invalid checksum'}
         end
       else
         #Message was too short

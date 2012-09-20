@@ -14,12 +14,18 @@ def create_message(key)
 end
 
 def get_data(address, port, key)
+  message = create_message(key)
   TCPSocket.open(address, port) do |client|
     wrapper = StatMonitor::EOTSocketWrapper.new(client)
-    wrapper.send_message(create_message(key))
+    wrapper.send_message(message)
     status = wrapper.read_until_eot(3)
+    return nil unless status
     response = wrapper.read_until_eot(3)
-    return StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key) || {'Status' => status}
+    if response
+      return StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key)
+    else
+      return "{\"Status\": #{status}}"
+    end
   end
 end
 
@@ -42,10 +48,16 @@ unless json
   exit
 end
 
-data = JSON.parse(json)
+data = JSON.parse(json) rescue json
 
 unless data['Status'] == 0
-  puts "Received error from server: #{data['Message']}"
+  msg = nil
+  if data['Status'] == 1
+    msg = "No valid encryption key present"
+  else
+    msg = data['Message']
+  end
+  puts "Received error from server: #{msg}"
   exit 1
 end
 

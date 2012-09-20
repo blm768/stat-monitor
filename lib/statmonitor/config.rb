@@ -1,3 +1,6 @@
+require 'logger'
+require 'syslog'
+
 module StatMonitor
   #This class represents configuration data for the various classes in StatMonitor.
   #
@@ -51,6 +54,12 @@ module StatMonitor
     attr_reader :pid_file
     #The location of the log file
     attr_reader :log_file
+    #The Logger object for the log file
+    attr_reader :log
+    #The syslog object
+    attr_reader :syslog
+    #The debug status
+    attr_reader :debug
 
     #Initialies the object using the given configuration file
 		def initialize(filename)
@@ -64,11 +73,24 @@ module StatMonitor
         file.close unless file.nil?
       end
 
+      @debug = (config['Debug'] == true)
+
       #This should be done first so future errors can go to the log.
       if config.include?'LogFile'
         @log_file = config['LogFile'].to_s
       else
         @log_file = "/etc/stat-monitor/client.log"
+      end
+
+      @log = Logger.new(@log_file)
+      @syslog = Syslog.open($0, Syslog::LOG_PID | Syslog::LOG_CONS)
+
+      if @debug
+        @log.level = Logger::DEBUG
+        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_DEBUG)
+      else
+        @log.level = Logger::ERROR
+        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_ERR)
       end
 
 	    #To do: make sure all loaded data are the correct type?
@@ -99,6 +121,8 @@ module StatMonitor
          @key = nil unless @key.length == 16
         end
       end
+
+      @key = nil
 
       if config.include?'PIDFile'
         @pid_file = config['PIDFile'].to_s

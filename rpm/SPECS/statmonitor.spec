@@ -62,6 +62,11 @@ cp -a ./%{gem_instdir}/config/* %{buildroot}/etc/stat-monitor
 mkdir -p %{buildroot}/etc/init.d/
 cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
 
+#Create ghost files.
+echo /dev/null > %{buildroot}/etc/stat-monitor/aes128.key
+mkdir -p %{buildroot}/var/run
+echo /dev/null > %{buildroot}/var/run/stat-monitor-client.pid
+
 %check
 #To do: run tests.
 #rake
@@ -80,7 +85,10 @@ cp -a ./%{gem_instdir}/scripts/stat-monitor-client %{buildroot}/etc/init.d/
 /etc/init.d/stat-monitor-client
 
 %config
-/etc/stat-monitor
+/etc/stat-monitor/client.rc
+
+%ghost /etc/stat-monitor/aes128.key
+%ghost /var/run/stat-monitor-client.pid
 
 
 #...

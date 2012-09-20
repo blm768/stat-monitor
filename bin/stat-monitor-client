@@ -47,16 +47,6 @@ rescue => e
   puts e.message
   puts e.backtrace.inspect
   #Try to write to the log.
-  begin
-    File.open(config.log_file, "w") do |log|
-      log.puts e.message
-      log.puts e.backtrace.inspect
-    end
-  rescue => e2
-    #If we can't write to the log, try to reach the user through standard output.
-    puts '-------------------'
-    puts "Unable to write to log file:"
-    puts e2.message
-    puts e2.backtrace.inspect
-  end
+  config.syslog.err(e.msg)
+  config.log.error(e.msg << e.backtrace)
 end
