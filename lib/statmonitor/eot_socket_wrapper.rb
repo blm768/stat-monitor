@@ -1,7 +1,7 @@
 module StatMonitor
   #Wraps a socket so messages are separated by EOT characters
   class EOTSocketWrapper
-    attr_accessor :socket
+    attr_reader :socket
 
     #Creates a new EOTSocketWrapper around a socket
     def initialize(socket)
@@ -46,13 +46,13 @@ module StatMonitor
 
       return message
     end
-  end
 
-  #Sends the message followed by an EOT
-  #
-  #The message must not contain any EOT characters.
-  def send_message(message)
-    @socket.write(message)
-    @socket.write("\004")
+    #Sends the message followed by an EOT
+    #
+    #The message must not contain any EOT characters.
+    def send_message(message)
+      @socket.write(message)
+      @socket.write("\004")
+    end
   end
 end

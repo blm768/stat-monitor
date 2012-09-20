@@ -10,6 +10,11 @@ require 'statmonitor'
 module StatMonitor
   #This class represents a stat monitor client. Each monitored machine runs a client.
   #
+  #==Encryption
+  #Many of the messages sent between the client and server are encrypted as follows:
+  #* The data are encrypted with a 128-bit AES CBC cipher using the key specified in the configuration file.
+  #* The 128-bit initialization vector used for the cipher is prepended to the encrypted data.
+  #
   #==Data format
   #Information is sent from the client to the server as a JSON structure. Its fields are defined as follows:
   #* "Processors": an integer representing the number of processors
@@ -35,8 +40,8 @@ module StatMonitor
   #it performs the following steps:
   #
   #* Retrieve the current system time as seconds from the Unix epoch in GMT
-  #* Convert the integer representing the time to a string and encrypt it using AES-128-CBC
-  #* Calculate the MD5 checksum of the encrypted data in raw binary format (using Digest:MD5.digest() instead of hexdigest())
+  #* Convert the integer representing the time to a string and encrypt it
+  #* Calculate the MD5 checksum of the encrypted data in binary format (using Digest:MD5.digest() instead of hexdigest())
   #* Concatenate the checksum and the encrypted data, then encode them in base64 format
   #* Initiate a TCP connection with the client
   #* Send the encoded time to the client, followed by an EOT character
@@ -49,7 +54,9 @@ module StatMonitor
   #* Parse the message as an integer
   #* Compare the timestamp in the message to the current system time
   #* Ensure that the timestamp is within 15 minutes of the client's local time
-  #* Generate the JSON structure, encrypt it with AES-128-CBC, convert it to Base64 format, and send it to the server with an EOT terminator
+  #* Generate the JSON structure
+  #* Send the value of the "Status" field as a plaintext decimal integer with an EOT terminator
+  #* Encrypt the JSON structure, convert it to Base64 format, and send it to the server with an EOT terminator
   #* Close the connection to the client
   #
   #===Error messages
@@ -121,13 +128,16 @@ module StatMonitor
 
             #Is there a key?
             if @config.key
-              response = wrapper.read_until_eot(@config.timeout)
+              message = wrapper.read_until_eot(@config.timeout)
 
-              response = JSON.generate(process_message(response))
+              data = process_message(message)
+
+              response = JSON.generate(data)
 
               response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key)).gsub(/\n/, "")
 
               #This may throw an error if the connection closes; just swallow the error.
+              wrapper.send_message(data['Status'])
               wrapper.send_message(response) rescue IOError
             else
               wrapper.send_message("Error") rescue IOError
@@ -150,7 +160,6 @@ module StatMonitor
       #Is there a message?
       if message then
         message = Base64.decode64(message)
-        puts message.length
         #Is the result long enough? Is it properly padded?
         if message.length < (16 + 32) || message.length % 16 != 0
           return INVALID_LENGTH_MESSAGE

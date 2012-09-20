@@ -17,7 +17,9 @@ def get_data(address, port, key)
   TCPSocket.open(address, port) do |client|
     wrapper = StatMonitor::EOTSocketWrapper.new(client)
     wrapper.send_message(create_message(key))
-    return wrapper.read_until_eot(3)
+    status = wrapper.read_until_eot(3)
+    response = wrapper.read_until_eot(3)
+    return StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key) || {'Status' => status}
   end
 end
 

@@ -36,7 +36,7 @@ begin
   isRunningAsDaemon = true
   client = StatMonitor::Client.new(config)
 
-  #client.daemonize() if config.root_dir == '/'
+  client.daemonize() if config.root_dir == '/'
 
   client.run()
 rescue => e
