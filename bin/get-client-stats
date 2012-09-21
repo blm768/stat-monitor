@@ -20,7 +20,7 @@ def get_data(address, port, key)
     wrapper.send_message(message)
     status = wrapper.read_until_eot(3)
     return nil unless status
-    response = wrapper.read_until_eot(3)
+    response = wrapper.read_until_eot(5)
     if response
       return StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key)
     else
@@ -48,8 +48,6 @@ unless json
   puts "No response received."
   exit
 end
-
-puts json
 
 data = JSON.parse(json)
 

@@ -19,26 +19,30 @@ module StatMonitor
     #If the timeout is nil, the read will never time out.
     def read_until_eot(timeout)
       #Read until eot or timeout.
-      eot_index = nil
+      eot_index = @buf.index("\004")
       received = nil
       gotMessage = nil
 
-      while gotMessage = IO.select([@socket], nil, nil, timeout) do
-        received = @socket.readpartial(1024) rescue nil
-        break unless received
+      #Do we already have a message ready?
+      unless eot_index
+        #Read until EOT or timeout
+        while gotMessage = IO.select([@socket], nil, nil, timeout) do
+          received = @socket.readpartial(1024) rescue nil
+          break unless received
 
-        eot_index = received.index("\004")
+          eot_index = received.index("\004")
 
-        @buf << received
+          @buf << received
 
-        if eot_index
-          eot_index += @buf.length - received.length
-          break
+          if eot_index
+            eot_index += @buf.length - received.length
+            break
+          end
         end
-      end
 
-      #If we didn't find an EOT, return nil.
-      return nil unless eot_index
+        #If we didn't find an EOT, return nil.
+        return nil unless eot_index
+      end
 
       message = @buf[0 ... eot_index]
 

@@ -161,6 +161,7 @@ module StatMonitor
 
                   #This may throw an error if the connection closes.
                   wrapper.send_message(status.to_s)
+                  #sleep(1)
                   wrapper.send_message(response)
 
                   #If there was an error while obtaining statistics, raise the
@@ -214,7 +215,6 @@ module StatMonitor
         message = Base64.decode64(message)
         #Is the result long enough? Is it properly padded?
         if message.length < (16 + 32) || message.length % 16 != 0
-          puts "Invalid length: #{message.length}"
           return INVALID_LENGTH_MESSAGE
         end
 
@@ -224,7 +224,6 @@ module StatMonitor
 
         if sentChecksum == actualChecksum
           message = StatMonitor::aes_128_cbc_decrypt(message, @config.key)
-          puts message
           remoteTime = message.to_i
           localTime = Time.new.to_i
 
