@@ -96,18 +96,17 @@ module StatMonitor
       STDOUT.reopen "/dev/null"
       STDERR.reopen "/dev/null"
 
-      #Write the PID file if possible.
-      begin
-        pid_file = File.open(@config.pid_file, "w")
+      #Write the PID file.
+      File.open(@config.pid_file, "w") do |pid_file|
         pid_file.puts(Process.pid.to_s)
-      ensure
-        pid_file.close unless pid_file.nil?
       end
+
+      @config.log.debug("Started with PID " << Process.pid.to_s)
 
     end
 
     #Runs the client. This function is meant to be run after the client is
-    #daemonized, so it enters an infinite loop and will not return.
+    #daemonized, and it will not return until a SIGTERM is received.
     def run()
       server = nil
 
@@ -117,6 +116,9 @@ module StatMonitor
         Signal.trap("TERM") do
           exit if @connections == 0
           @running = false
+          @mutex.synchronize do
+            @config.log.debug("Stopping client...")
+          end
         end
 
         @config.log.debug("Started client")
@@ -166,6 +168,8 @@ module StatMonitor
                     @config.log.error(e.msg << e.backtrace.inspect)
                   end
                 end
+
+                puts "Message sent."
               else
                 wrapper.send_message("1")
                 raise 'No valid encryption key present'
@@ -173,17 +177,24 @@ module StatMonitor
             rescue => e
               @mutex.synchronize do
                 @config.syslog.err(e.message)
-                @config.log.error(e.message << e.backtrace.join("\n"))
+                @config.log.error("#{e.message}\n#{e.backtrace.join("\n")}")
               end
             ensure
               client.close if client.open?
-              @mutex.synchronize{@connections -= 1}
+              puts "Closed"
+              @mutex.synchronize do
+                @connections -= 1
+                @config.log.debug("Connection to #{client.addr[3]} closed")
+              end
             end
           end
         end
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         server.close if server
+        @mutex.synchronize do
+          @config.log.debug("Client stopped")
+        end
       end
     end
 

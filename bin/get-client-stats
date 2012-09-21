@@ -43,6 +43,8 @@ key = File.read(keyfile)
 
 json = get_data(address, port, key)
 
+puts json
+
 unless json
   puts "No response received."
   exit
