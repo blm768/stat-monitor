@@ -155,7 +155,7 @@ module StatMonitor
 
                   response = JSON.generate(data)
 
-                  #response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key))
+                  response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key))
 
                   status = data['Status']
 
@@ -169,8 +169,9 @@ module StatMonitor
 
                   if status != 0
                     @mutex.synchronize do
-                      @config.syslog.err(e.msg)
-                      @config.log.error(e.msg << e.backtrace.inspect)
+                      msg = "Error while communicating with #{address}: #{data['Message']}"
+                      @config.syslog.err(msg)
+                      @config.log.error(msg)
                     end
                   end
                 else

@@ -17,7 +17,6 @@ module StatMonitor
   module_function
   #Decrypts data encrypted by aes_128_cbc_encrypt or its equivalent
   def aes_128_cbc_decrypt(message, key)
-    return message
     cipher = OpenSSL::Cipher::Cipher.new('AES-128-CBC')
     cipher.decrypt
     cipher.key = key
