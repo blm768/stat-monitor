@@ -127,68 +127,75 @@ module StatMonitor
         
         while @running do
           Thread.start(server.accept) do |client|
+            address = client.addr[3]
             begin
-              @mutex.synchronize{@connections += 1}
+              begin
+                @mutex.synchronize{@connections += 1}
 
-              @mutex.synchronize do
-                @config.log.debug("Connection accepted from " << client.addr[3])
-              end
-
-              wrapper = EOTSocketWrapper.new(client)
-
-              #Is there a key?
-              if @config.key
-                message = wrapper.read_until_eot(@config.timeout)
-
-                data_exception = nil
-                begin
-                  data = process_message(message)
-                rescue => e
-                  data = {'Status' => 5, 'Message' => 'Error while obtaining statistics'}
-                  data_exception = e
+                @mutex.synchronize do
+                  @config.log.debug("Connection accepted from #{address}")
                 end
 
-                response = JSON.generate(data)
+                wrapper = EOTSocketWrapper.new(client)
 
-                response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key)).gsub(/\n/, "")
+                #Is there a key?
+                if @config.key
+                  message = wrapper.read_until_eot(@config.timeout)
 
-                status = data['Status']
-
-                #This may throw an error if the connection closes.
-                wrapper.send_message(status.to_s)
-                wrapper.send_message(response)
-
-                if data_exception
-                  raise data_exception
-                end
-
-                if status != 0
-                  @mutex.synchronize do
-                    @config.syslog.err(e.msg)
-                    @config.log.error(e.msg << e.backtrace.inspect)
+                  #If process_message raises an exception, catch it for now
+                  #so the client can be notified.
+                  data = nil
+                  data_exception = nil
+                  begin
+                    data = process_message(message)
+                  rescue => e
+                    data = {'Status' => 5, 'Message' => 'Error while obtaining statistics'}
+                    data_exception = e
                   end
-                end
 
-                puts "Message sent."
-              else
-                wrapper.send_message("1")
-                raise 'No valid encryption key present'
+                  response = JSON.generate(data)
+
+                  #response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key))
+
+                  status = data['Status']
+
+                  #This may throw an error if the connection closes.
+                  wrapper.send_message(status.to_s)
+                  wrapper.send_message(response)
+
+                  #If there was an error while obtaining statistics, raise the
+                  #error now.
+                  raise data_exception if data_exception
+
+                  if status != 0
+                    @mutex.synchronize do
+                      @config.syslog.err(e.msg)
+                      @config.log.error(e.msg << e.backtrace.inspect)
+                    end
+                  end
+                else
+                  wrapper.send_message("1")
+                  raise 'No valid encryption key present'
+                end
+              ensure
+              client.close unless client.closed?
+              @mutex.synchronize do
+                @connections -= 1
+                @config.log.debug("Connection to #{address} closed")
               end
+            end
+            #Catch and log any errors.
             rescue => e
               @mutex.synchronize do
                 @config.syslog.err(e.message)
                 @config.log.error("#{e.message}\n#{e.backtrace.join("\n")}")
               end
-            ensure
-              client.close if client.open?
-              puts "Closed"
-              @mutex.synchronize do
-                @connections -= 1
-                @config.log.debug("Connection to #{client.addr[3]} closed")
-              end
             end
-          end
-        end
+            #If an uncaught error somehow managed to get here, we should know about it.
+            #We'll have to just kill the program.
+            #This should only happen if there's a serious issue with logging.
+          end.abort_on_exception = true #End thread
+        end #End server loop
       ensure
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         server.close if server
@@ -206,6 +213,7 @@ module StatMonitor
         message = Base64.decode64(message)
         #Is the result long enough? Is it properly padded?
         if message.length < (16 + 32) || message.length % 16 != 0
+          puts "Invalid length: #{message.length}"
           return INVALID_LENGTH_MESSAGE
         end
 
@@ -214,7 +222,8 @@ module StatMonitor
         actualChecksum = Digest::MD5.digest(message)
 
         if sentChecksum == actualChecksum
-          message = StatMonitor::aes_128_cbc_decrypt(message, @config.key) 
+          message = StatMonitor::aes_128_cbc_decrypt(message, @config.key)
+          puts message
           remoteTime = message.to_i
           localTime = Time.new.to_i
 

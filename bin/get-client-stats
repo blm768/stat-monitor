@@ -10,7 +10,7 @@ require 'statmonitor'
 def create_message(key)
   encrypted = StatMonitor::aes_128_cbc_encrypt(Time.new.to_i.to_s, key)
   checksum = Digest::MD5.digest(encrypted)
-  Base64.encode64(checksum + encrypted).gsub(/\n/, "")
+  return Base64.encode64(checksum + encrypted)
 end
 
 def get_data(address, port, key)
@@ -22,8 +22,9 @@ def get_data(address, port, key)
     return nil unless status
     response = wrapper.read_until_eot(3)
     if response
-      return StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key)
+      return response #StatMonitor::aes_128_cbc_decrypt(Base64.decode64(response), key)
     else
+      puts "Error: data omitted" unless status == 1
       return "{\"Status\": #{status}}"
     end
   end
@@ -42,8 +43,6 @@ keyfile = ARGV[2] || '/etc/stat-monitor/aes128.key'
 key = File.read(keyfile)
 
 json = get_data(address, port, key)
-
-puts json
 
 unless json
   puts "No response received."
