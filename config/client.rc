@@ -5,5 +5,5 @@
   ],
   "Timeout": 3,
   "Port": 9445,
-  "Debug": true
+  "Debug": false
 }

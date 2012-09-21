@@ -91,8 +91,8 @@ module StatMonitor
         @log.level = Logger::DEBUG
         @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_DEBUG)
       else
-        @log.level = Logger::ERROR
-        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_ERR)
+        @log.level = Logger::INFO
+        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_INFO)
       end
 
 	    #To do: make sure all loaded data are the correct type?

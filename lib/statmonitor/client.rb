@@ -101,7 +101,9 @@ module StatMonitor
         pid_file.puts(Process.pid.to_s)
       end
 
-      @config.log.debug("Started with PID " << Process.pid.to_s)
+      #To do: include this in info?
+      msg = "Started with PID #{Process.pid.to_s}"
+      @config.log.debug(msg)
 
     end
 
@@ -117,11 +119,9 @@ module StatMonitor
           exit if @connections == 0
           @running = false
           @mutex.synchronize do
-            @config.log.debug("Stopping client...")
+            @config.log.debug("Received interrupt; stopping...")
           end
         end
-
-        @config.log.debug("Started client")
         
         #Monitor incoming packets.
         
@@ -202,7 +202,7 @@ module StatMonitor
         FileUtils.rm(@config.pid_file) if File.exists? @config.pid_file
         server.close if server
         @mutex.synchronize do
-          @config.log.debug("Client stopped")
+          @config.log.debug("Stopped")
         end
       end
     end
