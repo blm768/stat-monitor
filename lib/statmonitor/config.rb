@@ -17,7 +17,7 @@ module StatMonitor
   #* "PIDFile": the file in which to write the PID
   #  - The default is "/var/run/stat-monitor-client.pid".
   #* "LogFile": the file in which to log errors
-  #  - The default is "/etc/stat-monitor/client.log"
+  #  - The default is "/var/log/stat-monitor-client.log"
   #* "Debug": a boolean value specifying whether to log debug messages
   #  - The default value is false
   #
@@ -81,7 +81,7 @@ module StatMonitor
       if config.include?'LogFile'
         @log_file = config['LogFile'].to_s
       else
-        @log_file = "/etc/stat-monitor/client.log"
+        @log_file = "/var/log/stat-monitor-client.log"
       end
 
       @log = Logger.new(@log_file)
