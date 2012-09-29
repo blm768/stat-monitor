@@ -6,5 +6,7 @@
   "Timeout": 3,
   "Port": 9445,
   "Key": "snapshot/aes128.key",
-  "LogFile": "/dev/null"
+  "LogFile": "/dev/null",
+  "PIDFile": "/tmp/stat-monitor-client.pid",
+  "RootDir": "snapshot/"
 }

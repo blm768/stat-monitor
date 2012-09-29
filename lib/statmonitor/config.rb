@@ -1,6 +1,7 @@
 require 'logger'
 require 'syslog'
 
+#
 module StatMonitor
   #This class represents configuration data for the various classes in StatMonitor.
   #
@@ -20,12 +21,8 @@ module StatMonitor
   #  - The default is "/var/log/stat-monitor-client.log"
   #* "Debug": a boolean value specifying whether to log debug messages
   #  - The default value is false
-  #
-  #==Environment variables
-  #The configuration values may be influenced by the following environment variables:
-  #* +STATMONITOR_ROOT+: used for unit testing:
-  #  - When this variable is set, data files will be loaded from a different "root directory."
-  #    For example, <tt>"$STATMONITOR_ROOT/proc/cpuinfo"</tt> will be loaded instead of <tt>"/proc/cpuinfo"</tt>.
+  #* "RootDir"
+  #  - The directory that should be treated as root when loading files for parsing; mainly useful for unit testing.
   #    Setting this to a value other than <tt>"/"</tt> will also change the value of df_command
   #    to <tt>"cat $STATMONITOR_ROOT/df.snapshot"</tt>.
 	class Config
@@ -84,8 +81,7 @@ module StatMonitor
         @log_file = "/var/log/stat-monitor-client.log"
       end
 
-      @log = Logger.new(@log_file)
-      @syslog = Syslog.open($0, Syslog::LOG_PID | Syslog::LOG_CONS)
+      open_logs()
 
       if @debug
         @log.level = Logger::DEBUG
@@ -130,7 +126,7 @@ module StatMonitor
         @pid_file = '/var/run/stat-monitor-client.pid'
       end
 
-      @root_dir = ENV['STATMONITOR_ROOT'] || '/'
+      @root_dir = config['RootDir'] || '/'
       if @root_dir == '/'
         @df_command = 'df -P | sed 1d'
       else
@@ -143,6 +139,12 @@ module StatMonitor
       @utmp_file = File.join(@root_dir, 'var/run/utmp')
 		end
 		
+		#Opens log files and syslogd connections
+		def open_logs()
+		  @log = Logger.new(@log_file)
+      @syslog = Syslog.open($0, Syslog::LOG_PID | Syslog::LOG_CONS)
+		end
+				
 		#Closes all open log files/syslogd connections
 		def close_logs()
 		  @log.close
