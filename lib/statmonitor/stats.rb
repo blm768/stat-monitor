@@ -105,7 +105,7 @@ module StatMonitor
       end
 
       if memFree
-          if memTotal
+        if memTotal
           memFree = Integer(Float(memFree) / memTotal * 100)
         else
           memFree = nil

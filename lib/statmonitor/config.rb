@@ -142,5 +142,11 @@ module StatMonitor
       @loadavg_file = File.join(@root_dir, 'proc/loadavg')
       @utmp_file = File.join(@root_dir, 'var/run/utmp')
 		end
+		
+		#Closes all open log files/syslogd connections
+		def close_logs()
+		  @log.close
+		  @syslog.close
+		end
 	end
 end
