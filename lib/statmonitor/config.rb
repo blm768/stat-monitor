@@ -24,7 +24,7 @@ module StatMonitor
   #* "RootDir"
   #  - The directory that should be treated as root when loading files for parsing; mainly useful for unit testing.
   #    Setting this to a value other than <tt>"/"</tt> will also change the value of df_command
-  #    to <tt>"cat $STATMONITOR_ROOT/df.snapshot"</tt>.
+  #    to the equivalent of <tt>"cat #{root_dir}/df.snapshot"</tt>.
 	class Config
     #A Set containing the names of all mount points whose disk space is monitored
   	attr_reader :monitored_mounts
@@ -84,11 +84,11 @@ module StatMonitor
       open_logs()
 
       if @debug
-        @log.level = Logger::DEBUG
-        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_DEBUG)
+        log.level = Logger::DEBUG
+        syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_DEBUG)
       else
-        @log.level = Logger::INFO
-        @syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_INFO)
+        log.level = Logger::INFO
+        syslog.mask = Syslog::LOG_UPTO(Syslog::LOG_INFO)
       end
 
 	    #To do: make sure all loaded data are the correct type?
@@ -101,7 +101,7 @@ module StatMonitor
 	    if config.include?'Timeout'
 	      @timeout = config['Timeout'].to_f
 	    else
-	      @timeout = 3
+	      @timeout = 3.0
 	    end
 	    
 	    if config.include?'Port'
@@ -115,7 +115,6 @@ module StatMonitor
       if File.file? @key_file
         File.open(@key_file) do |file|
 	       @key = file.read[0 .. 15]
-         #.chomp!.split("")
          @key = nil unless @key.length == 16
         end
       end
@@ -130,7 +129,8 @@ module StatMonitor
       if @root_dir == '/'
         @df_command = 'df -P | sed 1d'
       else
-        @df_command = 'cat "' + File.join(@root_dir, 'df.snapshot') + '"'
+        #Make sure to escape single quotes for the shell's sake.
+        @df_command = "cat '" << File.join(@root_dir, 'df.snapshot').gsub(/'/, "'\\''") << "'"
       end
   
       @meminfo_file = File.join(@root_dir, 'proc/meminfo')
@@ -147,8 +147,14 @@ module StatMonitor
 				
 		#Closes all open log files/syslogd connections
 		def close_logs()
-		  @log.close
-		  @syslog.close
+		  if @log
+  		  @log.close
+  		  @log = nil
+  		end
+  		if @syslog
+  		  @syslog.close
+  		  @syslog = nil
+  		end
 		end
 	end
 end

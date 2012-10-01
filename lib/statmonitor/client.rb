@@ -95,8 +95,21 @@ module StatMonitor
       STDIN.reopen "/dev/null"
       STDOUT.reopen "/dev/null"
       STDERR.reopen "/dev/null"
-
-      #Write the PID file.
+      
+      write_pid_and_messages()
+      
+      Signal.trap("TERM") do
+        exit if @connections == 0
+        @running = false
+        @mutex.synchronize do
+          @config.log.debug("Received interrupt; stopping...")
+        end
+      end
+    end
+    
+    #For internal and unit testing use
+    def write_pid_and_messages
+    #Write the PID file.
       File.open(@config.pid_file, "w") do |pid_file|
         pid_file.puts(Process.pid.to_s)
       end
@@ -104,7 +117,6 @@ module StatMonitor
       #To do: include this in info?
       msg = "Started with PID #{Process.pid.to_s}"
       @config.log.debug(msg)
-
     end
 
     #Runs the client. This function is meant to be run after the client is
@@ -113,79 +125,16 @@ module StatMonitor
       server = nil
 
       begin
+        #We call the querying machine the "server", but it's technically the client
+        #for the purposes of this loop, and this "client" program is the server. Strange, huh?
         server = TCPServer.new(@config.port)
-
-        Signal.trap("TERM") do
-          exit if @connections == 0
-          @running = false
-          @mutex.synchronize do
-            @config.log.debug("Received interrupt; stopping...")
-          end
-        end
         
         #Monitor incoming packets.
         
         while @running do
           Thread.start(server.accept) do |client|
-            address = client.addr[3]
             begin
-              begin
-                @mutex.synchronize{@connections += 1}
-
-                @mutex.synchronize do
-                  @config.log.debug("Connection accepted from #{address}")
-                end
-
-                wrapper = EOTSocketWrapper.new(client)
-
-                #Is there a key?
-                if @config.key
-                  message = wrapper.read_until_eot(@config.timeout)
-
-                  #If process_message raises an exception, catch it for now
-                  #so the client can be notified.
-                  data = nil
-                  data_exception = nil
-                  begin
-                    data = process_message(message)
-                  rescue => e
-                    data = {'Status' => 5, 'Message' => 'Error while obtaining statistics'}
-                    data_exception = e
-                  end
-
-                  response = JSON.generate(data)
-
-                  response = Base64.encode64(StatMonitor::aes_128_cbc_encrypt(response, @config.key))
-
-                  status = data['Status']
-
-                  #This may throw an error if the connection closes.
-                  wrapper.send_message(status.to_s)
-                  #sleep(1)
-                  wrapper.send_message(response)
-
-                  #If there was an error while obtaining statistics, raise the
-                  #error now.
-                  raise data_exception if data_exception
-
-                  if status != 0
-                    @mutex.synchronize do
-                      msg = "Error while communicating with #{address}: #{data['Message']}"
-                      @config.syslog.err(msg)
-                      @config.log.error(msg)
-                    end
-                  end
-                else
-                  wrapper.send_message("1")
-                  raise 'No valid encryption key present'
-                end
-              ensure
-              client.close unless client.closed?
-              @mutex.synchronize do
-                @connections -= 1
-                @config.log.debug("Connection to #{address} closed")
-              end
-            end
+              process_request(client)
             #Catch and log any errors.
             rescue => e
               @mutex.synchronize do
@@ -206,10 +155,67 @@ module StatMonitor
         end
       end
     end
+    
+    #Processes an incoming request on a socket
+    def process_request(socket)
+      address = socket.addr[3]
+      begin
+        @mutex.synchronize{@connections += 1}
 
-    #Processes a network message, including checksum verification, decryption, etc.
-    #Probably only useful for unit tests or when called by the run() method.
-    def process_message(message)
+        @mutex.synchronize do
+          @config.log.debug("Connection accepted from #{address}")
+        end
+
+        wrapper = EOTSocketWrapper.new(socket)
+
+        #Is there a key?
+        if @config.key
+          message = wrapper.read_until_eot(@config.timeout)
+
+          data, data_exception = verify_and_generate_data(message)
+
+          response = JSON.generate(data)
+
+          response = encode_message(response)
+
+          status = data['Status']
+
+          #This may throw an error if the connection closes.
+          wrapper.send_message(status.to_s)
+          wrapper.send_message(response)
+          
+          throw data_exception if data_exception
+          
+          unless data['Status'] == 0
+            msg ||= data['Message']
+            @mutex.synchronize do
+              msg = "Error while communicating with #{address}: #{msg}"
+              @config.syslog.err(msg)
+              @config.log.error(msg)
+            end
+          end
+        else
+          wrapper.send_message("1")
+          raise 'No valid encryption key present'
+        end
+      ensure
+        socket.close unless socket.closed?
+        @mutex.synchronize do
+          @connections -= 1
+          @config.log.debug("Connection to #{address} closed")
+        end
+      end
+    end
+    
+    #Encodes a message for transmission
+    def encode_message(message)
+      Base64.encode64(StatMonitor::aes_128_cbc_encrypt(message, @config.key))
+    end
+
+    #Verifies a network message and generates the correct response data as a hash, also returning any exceptions thrown while
+    #generating data
+    #Probably only useful for unit tests or for internal use.
+    def verify_and_generate_data(message)
       #Is there a message?
       if message then
         message = Base64.decode64(message)
@@ -228,7 +234,7 @@ module StatMonitor
           localTime = Time.new.to_i
 
           if remoteTime < (localTime + (60 * 15)) && remoteTime > (localTime - (60 * 15))
-            return @stats.get
+            get_data()
           else
             #Invalid timestamp
             return {'Status' => 4, 'Message' => 'Timestamp does not match local time'}
@@ -240,6 +246,18 @@ module StatMonitor
       else
         #Message was too short
         return INVALID_LENGTH_MESSAGE
+      end
+    end
+    
+    #Gets stats data
+    #
+    #If there is an error, logs the error and returns an error hash and the exception thrown
+    def get_data
+      data = nil
+      begin
+        return @stats.get
+      rescue => e
+        return {'Status' => 5, 'Message' => 'Error while obtaining statistics'}, e
       end
     end
   end

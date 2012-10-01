@@ -6,7 +6,7 @@ describe StatMonitor::EOTSocketWrapper do
   before(:each) do
     @sock = DummySocket.new
     @wrapper = StatMonitor::EOTSocketWrapper.new(@sock)
-    IO.expects(:select).with([@sock], nil, nil, 3).returns(@wrapper).at_least_once
+    IO.stubs(:select).with([@sock], nil, nil, 3).returns(@wrapper)
   end
 
   it "correctly locates the first EOT character" do

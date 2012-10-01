@@ -29,6 +29,7 @@ class DummySocket
 end
 
 RSpec.configure do |config|
+  config.mock_with(:mocha)
   config.before(:all) do
     @CORRECT_HASH = {"Disks"=>{"/boot"=>9, "/"=>9}, "Message"=>"OK", "Status"=>0, "Processors"=>1, "Memory"=>{"SwapCached"=>0, "SwapFree"=>100, "Total"=>1020696, "Cached"=>173688, "SwapTotal"=>2064376, "Free"=>72}, "Users"=>["vagrant"], "Load"=>[0, 0, 0]}
     @MESSAGE_TOO_SHORT_HASH = {'Status' => 2, 'Message' => 'Invalid message length'}

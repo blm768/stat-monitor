@@ -18,21 +18,35 @@ describe StatMonitor::Client do
   #   testMsg(@message, @config).should eql @CORRECT_HASH
   # end
   
+  it "writes a correct PID file" do
+    begin
+      @client.write_pid_and_messages()
+      File.read(@config.pid_file).strip.should eql Process.pid.to_s
+    ensure
+      FileUtils.rm(@config.pid_file) if File.exists?(@config.pid_file)
+    end
+  end
+  
+  it "properly encodes messages" do
+    encoded = @client.encode_message("abcd")
+    StatMonitor::aes_128_cbc_decrypt(Base64.decode64(encoded), @config.key).should eql "abcd"
+  end
+  
   it "properly handles correct messages" do
-    @client.process_message(@message).should eql @CORRECT_HASH
+    @client.verify_and_generate_data(@message).should eql @CORRECT_HASH
   end
 
   it "properly handles empty or too-short messages" do
-    @client.process_message(nil).should eql @MESSAGE_TOO_SHORT_HASH
-    @client.process_message("test").should eql @MESSAGE_TOO_SHORT_HASH
+    @client.verify_and_generate_data(nil).should eql @MESSAGE_TOO_SHORT_HASH
+    @client.verify_and_generate_data("test").should eql @MESSAGE_TOO_SHORT_HASH
   end
 
   it "properly handles messages with invalid checksums" do
     msg = Base64.encode64("This messsage has a bad checksum!               ")
-    @client.process_message(msg).should eql @BAD_CHECKSUM_HASH
+    @client.verify_and_generate_data(msg).should eql @BAD_CHECKSUM_HASH
   end
 
   it "properly handles messages with invalid timestamps" do
-    @client.process_message(@message_invalid).should eql @BAD_TIMESTAMP_HASH
+    @client.verify_and_generate_data(@message_invalid).should eql @BAD_TIMESTAMP_HASH
   end
 end

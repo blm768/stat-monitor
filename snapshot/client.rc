@@ -8,5 +8,6 @@
   "Key": "snapshot/aes128.key",
   "LogFile": "/dev/null",
   "PIDFile": "/tmp/stat-monitor-client.pid",
-  "RootDir": "snapshot/"
+  "RootDir": "snapshot/",
+  "Debug": true
 }
