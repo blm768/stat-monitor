@@ -2,14 +2,16 @@ require 'spec_helper'
 
 describe StatMonitor::Client do
   before :all do
-    @client = StatMonitor::Client.new(@config)
-    
     encrypted = StatMonitor::aes_128_cbc_encrypt(Time.new.to_i.to_s, @config.key)
     encrypted_invalid = StatMonitor::aes_128_cbc_encrypt((Time.new.to_i - 30 * 60).to_s, @config.key)
     checksum = Digest::MD5.digest(encrypted)
     checksum_invalid = Digest::MD5.digest(encrypted_invalid)
     @message = Base64.encode64(checksum + encrypted).gsub(/\n/, "")
     @message_invalid = Base64.encode64(checksum_invalid + encrypted_invalid).gsub(/\n/, "")
+  end
+  
+  before :each do
+    @client = StatMonitor::Client.new(@config)
   end
   
   #To do: restore? (needs rewriting for new protocol)
@@ -48,5 +50,10 @@ describe StatMonitor::Client do
 
   it "properly handles messages with invalid timestamps" do
     @client.verify_and_generate_data(@message_invalid).should eql @BAD_TIMESTAMP_HASH
+  end
+  
+  it "properly handles errors raised while generating statistics" do
+    StatMonitor::LocalStats.any_instance.stubs(:get).raises("Error!")
+    @client.verify_and_generate_data(@message)[0].should eql @INTERNAL_ERROR_HASH
   end
 end

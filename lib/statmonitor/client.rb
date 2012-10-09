@@ -187,7 +187,7 @@ module StatMonitor
           throw data_exception if data_exception
           
           unless data['Status'] == 0
-            msg ||= data['Message']
+            msg = data['Message']
             @mutex.synchronize do
               msg = "Error while communicating with #{address}: #{msg}"
               @config.syslog.err(msg)

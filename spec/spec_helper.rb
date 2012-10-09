@@ -35,6 +35,7 @@ RSpec.configure do |config|
     @MESSAGE_TOO_SHORT_HASH = {'Status' => 2, 'Message' => 'Invalid message length'}
     @BAD_CHECKSUM_HASH  = {'Status' => 3, 'Message' => 'Invalid checksum'}
     @BAD_TIMESTAMP_HASH = {'Status' => 4, 'Message' => 'Timestamp does not match local time'}
+    @INTERNAL_ERROR_HASH = {'Status' => 5, 'Message' => 'Error while obtaining statistics'}
     
     ENV['STATMONITOR_ROOT'] = File.join(Dir.pwd, 'snapshot/')
     @config = StatMonitor::Config.new("snapshot/client.rc")
